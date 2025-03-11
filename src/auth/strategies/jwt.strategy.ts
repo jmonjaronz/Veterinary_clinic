@@ -6,6 +6,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+// Define la interfaz para el payload del JWT
+interface JwtPayload {
+    id: number;
+    sub: number;
+    username: string;
+    role: string;
+    iat?: number;
+    exp?: number;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(
@@ -15,12 +25,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     ) {
         super({
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        ignoreExpiration: false,
         secretOrKey: configService.get<string>('JWT_SECRET'),
         });
     }
 
-    async validate(payload: { id: number; sub: number; username: string; role: string }) {
+    async validate(payload: JwtPayload): Promise<User> {
         try {
+        if (!payload || !payload.id) {
+            throw new UnauthorizedException('Token no válido');
+        }
+
         const user = await this.userRepository.findOne({ 
             where: { id: payload.id } 
         });
