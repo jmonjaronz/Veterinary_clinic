@@ -11,7 +11,7 @@ interface JwtPayload {
     sub: number;
     id: number;
     role: string;
-    }
+}
 
 interface UserResponse {
     id: number;

@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Request } from 'express';
+import { LoginResponse } from './interfaces/login-response.interface';
 
 // Definir la interfaz RequestWithUser para usar en lugar de any
 interface RequestWithUser extends Request {
@@ -18,9 +19,8 @@ export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
     @Post('login')
-    async login(@Body() loginDto: LoginDto) {
-        const result = await this.authService.login(loginDto);
-        return result;
+    async login(@Body() loginDto: LoginDto): Promise<LoginResponse> {
+        return this.authService.login(loginDto);
     }
 
     @UseGuards(JwtAuthGuard)
