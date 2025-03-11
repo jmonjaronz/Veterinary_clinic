@@ -18,37 +18,39 @@ export class UsersService {
 
     async create(createUserDto: CreateUserDto): Promise<User> {
         const { person_id, user_type, password } = createUserDto;
-
+    
         // Verificar si la persona existe
         const person = await this.personRepository.findOne({ where: { id: person_id } });
         if (!person) {
             throw new NotFoundException(`Persona con ID ${person_id} no encontrada`);
         }
-
+    
         // Verificar si ya existe un usuario con ese user_type
         const existingUser = await this.userRepository.findOne({ where: { user_type } });
         if (existingUser) {
             throw new ConflictException(`Ya existe un usuario con el tipo ${user_type}`);
         }
-
+    
         // Hashear la contraseña de forma segura
-        let hashed_password = '';
         try {
-            const salt = await bcrypt.genSalt(10);
-            hashed_password = await bcrypt.hash(password, salt);
-        } catch {
-        // En caso de error, usamos un hash ficticio (nunca debería llegar aquí)
-            hashed_password = 'ERROR_CREATING_HASH';
+            // Número de rondas de sal fijo para consistencia
+            const rounds = 10;
+            const salt = await bcrypt.genSalt(rounds);
+            const hashed_password = await bcrypt.hash(password, salt);
+    
+            // Crear el usuario
+            const user = this.userRepository.create({
+                person_id,
+                user_type,
+                hashed_password,
+            });
+    
+            return this.userRepository.save(user);
+        } catch (error) {
+            // Lanzar una excepción más específica
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            throw new Error(`Error al crear el usuario: ${errorMessage}`);
         }
-
-        // Crear el usuario
-        const user = this.userRepository.create({
-            person_id,
-            user_type,
-            hashed_password,
-        });
-
-        return this.userRepository.save(user);
     }
 
     async findAll(): Promise<User[]> {
