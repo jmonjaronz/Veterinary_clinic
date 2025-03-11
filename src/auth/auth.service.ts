@@ -5,25 +5,14 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
+import { LoginResponse } from './interfaces/login-response.interface';
 
+// Define la interfaz para el payload del JWT
 interface JwtPayload {
     username: string;
     sub: number;
     id: number;
     role: string;
-}
-
-interface UserResponse {
-    id: number;
-    username: string;
-    personId: number;
-    fullName: string;
-    role: string;
-}
-
-interface LoginResponse {
-    access_token: string;
-    user: UserResponse;
 }
 
 @Injectable()
@@ -45,16 +34,22 @@ export class AuthService {
             return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.hashed_password);
+        let isMatch = false;
+        try {
+            isMatch = await bcrypt.compare(password, user.hashed_password);
+        } catch {
+            // Si hay error en la comparación, devolvemos null
+            return null;
+        }
         
-        if (isPasswordValid) {
+        if (isMatch) {
             // Creamos un nuevo objeto omitiendo hashed_password
             const { hashed_password, ...result } = user;
             return result;
         }
         
         return null;
-        } catch (error) {
+        } catch {
         return null;
         }
     }
@@ -71,11 +66,14 @@ export class AuthService {
         throw new UnauthorizedException('Usuario sin perfil asociado');
         }
 
+        const role = user.person?.role || 'cliente';
+        const fullName = user.person?.full_name || '';
+
         const payload: JwtPayload = { 
         username: user.user_type,
         sub: user.id,
         id: user.id,
-        role: user.person.role || 'cliente'
+        role
         };
 
         return {
@@ -84,8 +82,8 @@ export class AuthService {
             id: user.id,
             username: user.user_type,
             personId: user.person_id,
-            fullName: user.person.full_name,
-            role: user.person.role || 'cliente'
+            fullName,
+            role
         }
         };
     }

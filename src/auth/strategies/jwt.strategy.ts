@@ -31,11 +31,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     async validate(payload: JwtPayload): Promise<User> {
-        try {
         if (!payload || !payload.id) {
-            throw new UnauthorizedException('Token no válido');
+        throw new UnauthorizedException('Token no válido');
         }
 
+        try {
         const user = await this.userRepository.findOne({ 
             where: { id: payload.id } 
         });
@@ -45,8 +45,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         }
 
         return user;
-        } catch (error) {
-        throw new UnauthorizedException('Token inválido');
+        } catch {
+        throw new UnauthorizedException('Error al validar el token');
         }
     }
 }
