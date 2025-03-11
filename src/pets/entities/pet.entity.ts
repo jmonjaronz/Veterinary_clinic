@@ -13,7 +13,8 @@ export class Pet {
     @Column()
     species_id: number;
 
-    @ManyToOne(() => Species, species => species.pets, { eager: true })
+    // Usamos strings para el tipo y la propiedad de relación inversa
+    @ManyToOne('Species', 'pets', { eager: true })
     @JoinColumn({ name: 'species_id' })
     species: Species;
 
@@ -32,7 +33,7 @@ export class Pet {
     @Column()
     owner_id: number;
 
-    @ManyToOne(() => Person, person => person.pets)
+    @ManyToOne('Person', 'pets')
     @JoinColumn({ name: 'owner_id' })
     owner: Person;
 
