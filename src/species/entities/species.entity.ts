@@ -18,6 +18,6 @@ export class Species {
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
 
-    @OneToMany(() => Pet, pet => pet.species)
+    @OneToMany(() => Pet, (pet) => pet.species)
     pets: Pet[];
 }

@@ -28,9 +28,10 @@ export class Person {
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
 
-    @OneToMany(() => User, user => user.person)
+    // Usamos strings en lugar de funciones arrow
+    @OneToMany('User', 'person')
     users: User[];
 
-    @OneToMany(() => Pet, pet => pet.owner)
+    @OneToMany('Pet', 'owner')
     pets: Pet[];
 }
