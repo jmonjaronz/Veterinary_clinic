@@ -1,8 +1,7 @@
 import { IsOptional, IsString, MinLength } from 'class-validator';
-import { PartialType } from '@nestjs/mapped-types';
 import { CreateUserDto } from './create-user.dto';
 
-export class UpdateUserDto extends PartialType(CreateUserDto) {
+export class UpdateUserDto implements Partial<CreateUserDto> {
     @IsOptional()
     @IsString({ message: 'El tipo de usuario debe ser una cadena de texto' })
     user_type?: string;
