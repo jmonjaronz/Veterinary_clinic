@@ -15,16 +15,21 @@ export class AuthService {
     ) {}
 
     async validateUser(username: string, password: string): Promise<any> {
-        const user = await this.userRepository.findOne({ 
-        where: { user_type: username },
-        relations: ['person']
-        });
-
-        if (user && await bcrypt.compare(password, user.hashed_password)) {
-        const { hashed_password, ...result } = user;
-        return result;
+        try {
+            const user = await this.userRepository.findOne({ 
+                where: { user_type: username },
+                relations: ['person']
+            });
+        
+            if (user && await bcrypt.compare(password, user.hashed_password)) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { hashed_password, ...result } = user;
+                return result;
+            }
+            return null;
+        } catch (error) {
+            return null;
         }
-        return null;
     }
 
     async login(loginDto: LoginDto) {
@@ -36,10 +41,10 @@ export class AuthService {
         }
 
         const payload = { 
-        username: user.user_type,
-        sub: user.id,
-        id: user.id,
-        role: user.person.role
+            username: user.user_type,
+            sub: user.id,
+            id: user.id,
+            role: user.person?.role
         };
 
         return {
@@ -48,7 +53,7 @@ export class AuthService {
             id: user.id,
             username: user.user_type,
             personId: user.person_id,
-            fullName: user.person.full_name,
+            fullName: user.person?.full_name,
             role: user.person.role
         }
         };

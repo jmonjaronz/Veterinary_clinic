@@ -9,24 +9,29 @@ import { User } from '../../users/entities/user.entity';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(
-        private configService: ConfigService,
+        private readonly configService: ConfigService,
         @InjectRepository(User)
-        private userRepository: Repository<User>,
+        private readonly userRepository: Repository<User>,
     ) {
         super({
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-        secretOrKey: configService.get('JWT_SECRET'),
+        secretOrKey: configService.get<string>('JWT_SECRET'),
         });
     }
 
-    async validate(payload: any) {
-        const { id } = payload;
-        const user = await this.userRepository.findOne({ where: { id } });
+    async validate(payload: { id: number; sub: number; username: string; role: string }) {
+        try {
+        const user = await this.userRepository.findOne({ 
+            where: { id: payload.id } 
+        });
 
         if (!user) {
-        throw new UnauthorizedException('Usuario no encontrado');
+            throw new UnauthorizedException('Usuario no encontrado');
         }
 
         return user;
+        } catch (error) {
+        throw new UnauthorizedException('Token inválido');
+        }
     }
 }
