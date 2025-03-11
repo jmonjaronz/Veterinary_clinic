@@ -18,6 +18,7 @@ export class Species {
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
 
-    @OneToMany(() => Pet, (pet) => pet.species)
+    // Usamos una sintaxis sin funciones arrow para evitar problemas de tipado
+    @OneToMany('Pet', 'species')
     pets: Pet[];
 }
