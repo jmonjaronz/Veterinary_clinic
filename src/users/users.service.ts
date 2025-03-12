@@ -105,12 +105,12 @@ export class UsersService {
         }
 
         if (updateUserDto.password) {
-        try {
-            const salt = await bcrypt.genSalt(10);
-            user.hashed_password = await bcrypt.hash(updateUserDto.password, salt);
-        } catch {
-            // En caso de error, no actualizamos la contraseña
-        }
+            try {
+                const salt = await bcrypt.genSalt(10);
+                user.hashed_password = await bcrypt.hash(updateUserDto.password, salt);
+            } catch {
+                // En caso de error, no actualizamos la contraseña
+            }
         }
 
         return this.userRepository.save(user);

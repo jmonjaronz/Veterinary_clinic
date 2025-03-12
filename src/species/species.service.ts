@@ -64,7 +64,7 @@ export class SpeciesService {
         const result = await this.speciesRepository.delete(id);
         
         if (result.affected === 0) {
-        throw new NotFoundException(`Especie con ID ${id} no encontrada`);
+            throw new NotFoundException(`Especie con ID ${id} no encontrada`);
         }
     }
 }
