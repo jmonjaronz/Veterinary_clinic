@@ -46,7 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
         return user;
         } catch {
-        throw new UnauthorizedException('Error al validar el token');
+            throw new UnauthorizedException('Error al validar el token');
         }
     }
 }
