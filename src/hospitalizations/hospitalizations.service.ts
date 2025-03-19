@@ -216,7 +216,7 @@ export class HospitalizationsService {
         const hospitalization = await this.findOne(id);
         
         if (hospitalization.discharge_date) {
-        throw new BadRequestException(`Esta hospitalización ya tiene fecha de alta: ${hospitalization.discharge_date}`);
+        throw new BadRequestException(`Esta hospitalización ya tiene fecha de alta: ${hospitalization.discharge_date.toISOString()}`);
         }
 
         const admissionDate = new Date(hospitalization.admission_date);
