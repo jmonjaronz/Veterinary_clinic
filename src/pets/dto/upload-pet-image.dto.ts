@@ -1,5 +1,5 @@
-import { IsOptional, IsNumber, Transform } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsNumber } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class UploadPetImageDto {
     @IsNumber()
