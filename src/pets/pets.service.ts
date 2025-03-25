@@ -47,29 +47,29 @@ export class PetsService {
     }
 
     async findOne(id: number): Promise<Pet> {
-        const pet = await this.petRepository.findOne({ 
+        const pet = await this.petRepository.findOne({
             where: { id },
-            relations: ['owner', 'species'],
+            relations: ['owner', 'species', 'images'], // Añade 'images' a las relaciones
         });
-
+        
         if (!pet) {
-        throw new NotFoundException(`Mascota con ID ${id} no encontrada`);
+            throw new NotFoundException(`Mascota con ID ${id} no encontrada`);
         }
-
+        
         return pet;
-    }
+    }      
 
     async findByOwner(ownerId: number): Promise<Pet[]> {
         return this.petRepository.find({
             where: { owner_id: ownerId },
-            relations: ['owner', 'species'],
+            relations: ['owner', 'species', 'images'],  // Añadimos 'images' a las relaciones
         });
     }
-
+    
     async findBySpecies(speciesId: number): Promise<Pet[]> {
         return this.petRepository.find({
             where: { species_id: speciesId },
-            relations: ['owner', 'species'],
+            relations: ['owner', 'species', 'images'],  // Añadimos 'images' a las relaciones
         });
     }
 
