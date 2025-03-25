@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Person } from '../../persons/entities/person.entity';
 import { Species } from '../../species/entities/species.entity';
+import { PetImage } from './pet-image.entity';
 
 @Entity({ name: 'pets' })
 export class Pet {
@@ -13,7 +14,6 @@ export class Pet {
     @Column()
     species_id: number;
 
-    // Usamos strings para el tipo y la propiedad de relación inversa
     @ManyToOne('Species', 'pets', { eager: true })
     @JoinColumn({ name: 'species_id' })
     species: Species;
@@ -45,4 +45,8 @@ export class Pet {
 
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
+
+    // Agregar esta relación
+    @OneToMany(() => PetImage, petImage => petImage.pet)
+    images: PetImage[];
 }
