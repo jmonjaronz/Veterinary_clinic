@@ -19,64 +19,59 @@ export class PersonsService {
     }
 
     async findAll(filterDto?: PersonFilterDto) {
-        // Valores por defecto si filterDto es undefined
-        const page = filterDto?.page || 1;
-        const per_page = filterDto?.per_page || 10;
-        const full_name = filterDto?.full_name;
-        const email = filterDto?.email;
-        const dni = filterDto?.dni;
-        const role = filterDto?.role;
+        // Usar un objeto por defecto si filterDto es undefined
+        const filters = filterDto || new PersonFilterDto();
         
         // Construir los filtros dinámicamente
         const where: FindOptionsWhere<Person> = {};
         
-        if (full_name) {
-            where.full_name = Like(`%${full_name}%`);
+        if (filters.full_name) {
+            where.full_name = Like(`%${filters.full_name}%`);
         }
         
-        if (email) {
-            where.email = Like(`%${email}%`);
+        if (filters.email) {
+            where.email = Like(`%${filters.email}%`);
         }
         
-        if (dni) {
-            where.dni = Like(`%${dni}%`);
+        if (filters.dni) {
+            where.dni = Like(`%${filters.dni}%`);
         }
         
-        if (role) {
-            where.role = role;
+        if (filters.role) {
+            where.role = filters.role;
         }
         
         // Calcular skip para paginación
-        const skip = (page - 1) * per_page;
+        const skip = (filters.page - 1) * filters.per_page;
         
         // Buscar personas con filtros y paginación
         const [data, total] = await this.personRepository.findAndCount({
             where,
             skip,
-            take: per_page,
+            take: filters.per_page,
             order: {
                 id: 'DESC'
             }
         });
         
         // Calcular metadatos de paginación
-        const lastPage = Math.ceil(total / per_page);
+        const lastPage = Math.ceil(total / filters.per_page);
         
         return {
             data,
             meta: {
                 total,
-                per_page,
-                current_page: page,
+                per_page: filters.per_page,
+                current_page: filters.page,
                 last_page: lastPage,
                 from: skip + 1,
                 to: skip + data.length,
             },
             links: {
-                first: `?page=1&per_page=${per_page}`,
-                last: `?page=${lastPage}&per_page=${per_page}`,
-                prev: page > 1 ? `?page=${page - 1}&per_page=${per_page}` : null,
-                next: page < lastPage ? `?page=${page + 1}&per_page=${per_page}` : null,
+                first: `?page=1&per_page=${filters.per_page}`,
+                last: `?page=${lastPage}&per_page=${filters.per_page}`,
+                prev: filters.page > 1 ? `?page=${filters.page - 1}&per_page=${filters.per_page}` : null,
+                next: filters.page < lastPage ? `?page=${filters.page + 1}&per_page=${filters.per_page}` : null,
             }
         };
     }
@@ -109,11 +104,18 @@ export class PersonsService {
     }
 
     async findByRole(role: string, filterDto?: PersonFilterDto) {
-        // Crear una copia del filtro para evitar modificar el original
-        const filter = { ...filterDto } || {};
-        // Establecer el rol en los filtros
-        filter.role = role;
-        return this.findAll(filter);
+        // Crear una nueva instancia de PersonFilterDto
+        const filters = filterDto ? new PersonFilterDto() : new PersonFilterDto();
+        
+        // Copiar las propiedades de filterDto si existe
+        if (filterDto) {
+            Object.assign(filters, filterDto);
+        }
+        
+        // Establecer el rol
+        filters.role = role;
+        
+        return this.findAll(filters);
     }
 
     async findClients(filterDto?: PersonFilterDto) {
