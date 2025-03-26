@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } f
 import { PetsService } from './pets.service';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
+import { PetFilterDto } from './dto/pet-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('pets')
@@ -16,16 +17,22 @@ export class PetsController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Query('owner_id') ownerId?: string, @Query('species_id') speciesId?: string) {
+    findAll(
+        @Query() filterDto: PetFilterDto,
+        @Query('owner_id') ownerId?: string,
+        @Query('species_id') speciesId?: string
+    ) {
+        // Si se proporcionan filtros específicos de propietario o especie
         if (ownerId) {
-        return this.petsService.findByOwner(+ownerId);
+            return this.petsService.findByOwner(+ownerId, filterDto);
         }
         
         if (speciesId) {
-        return this.petsService.findBySpecies(+speciesId);
+            return this.petsService.findBySpecies(+speciesId, filterDto);
         }
         
-        return this.petsService.findAll();
+        // Caso genérico con todos los filtros posibles
+        return this.petsService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
