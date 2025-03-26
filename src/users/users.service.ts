@@ -6,6 +6,7 @@ import { User } from './entities/user.entity';
 import { Person } from '../persons/entities/person.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserFilterDto } from './dto/user-filter.dto';
 
 @Injectable()
 export class UsersService {
@@ -53,10 +54,74 @@ export class UsersService {
         }
     }
 
-    async findAll(): Promise<User[]> {
-        return this.userRepository.find({
-        relations: ['person'],
-        });
+    async findAll(filterDto?: UserFilterDto) {
+        // Usar un objeto por defecto si filterDto es undefined
+        const filters = filterDto || new UserFilterDto();
+        
+        // Extraer los valores de filtrado
+        const {
+            page,
+            per_page,
+            user_type,
+            person_id,
+            full_name,
+            email
+        } = filters;
+        
+        // Construir la consulta con relaciones
+        const queryBuilder = this.userRepository
+            .createQueryBuilder('user')
+            .leftJoinAndSelect('user.person', 'person');
+        
+        // Aplicar filtros
+        if (user_type) {
+            queryBuilder.andWhere('user.user_type LIKE :user_type', { user_type: `%${user_type}%` });
+        }
+        
+        if (person_id) {
+            queryBuilder.andWhere('user.person_id = :person_id', { person_id });
+        }
+        
+        if (full_name) {
+            queryBuilder.andWhere('person.full_name LIKE :full_name', { full_name: `%${full_name}%` });
+        }
+        
+        if (email) {
+            queryBuilder.andWhere('person.email LIKE :email', { email: `%${email}%` });
+        }
+        
+        // Calcular skip para paginación
+        const skip = (page - 1) * per_page;
+        
+        // Aplicar paginación y ordenamiento
+        queryBuilder
+            .orderBy('user.id', 'DESC')
+            .skip(skip)
+            .take(per_page);
+        
+        // Ejecutar la consulta
+        const [data, total] = await queryBuilder.getManyAndCount();
+        
+        // Calcular metadatos de paginación
+        const lastPage = Math.ceil(total / per_page);
+        
+        return {
+            data,
+            meta: {
+                total,
+                per_page,
+                current_page: page,
+                last_page: lastPage,
+                from: skip + 1,
+                to: skip + data.length,
+            },
+            links: {
+                first: `?page=1&per_page=${per_page}`,
+                last: `?page=${lastPage}&per_page=${per_page}`,
+                prev: page > 1 ? `?page=${page - 1}&per_page=${per_page}` : null,
+                next: page < lastPage ? `?page=${page + 1}&per_page=${per_page}` : null,
+            }
+        };
     }
 
     async findOne(id: number): Promise<User> {
