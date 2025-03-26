@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { PersonsService } from './persons.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
+import { PersonFilterDto } from './dto/person-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('persons')
@@ -16,20 +17,20 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll() {
-        return this.personsService.findAll();
+    findAll(@Query() filterDto: PersonFilterDto) {
+        return this.personsService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('clients')
-    findClients() {
-        return this.personsService.findClients();
+    findClients(@Query() filterDto: PersonFilterDto) {
+        return this.personsService.findClients(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('staff')
-    findStaff() {
-        return this.personsService.findStaff();
+    findStaff(@Query() filterDto: PersonFilterDto) {
+        return this.personsService.findStaff(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
