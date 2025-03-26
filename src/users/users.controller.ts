@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ClassSerializerInterceptor, UseInterceptors, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserFilterDto } from './dto/user-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @UseInterceptors(ClassSerializerInterceptor) // Para excluir campos sensibles como la contraseña
@@ -17,8 +18,8 @@ export class UsersController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll() {
-        return this.usersService.findAll();
+    findAll(@Query() filterDto: UserFilterDto) {
+        return this.usersService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
