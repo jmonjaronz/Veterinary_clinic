@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { SpeciesService } from './species.service';
 import { CreateSpeciesDto } from './dto/create-species.dto';
 import { UpdateSpeciesDto } from './dto/update-species.dto';
+import { SpeciesFilterDto } from './dto/species-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('species')
@@ -16,8 +17,8 @@ export class SpeciesController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll() {
-        return this.speciesService.findAll();
+    findAll(@Query() filterDto: SpeciesFilterDto) {
+        return this.speciesService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
