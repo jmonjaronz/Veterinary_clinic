@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } f
 import { VaccinationPlansService } from './vaccination-plans.service';
 import { CreateVaccinationPlanDto } from './dto/create-vaccination-plan.dto';
 import { UpdateVaccinationPlanDto } from './dto/update-vaccination-plan.dto';
+import { VaccinationPlanFilterDto } from './dto/vaccination-plan-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('vaccination-plans')
@@ -16,16 +17,20 @@ export class VaccinationPlansController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Query('pet_id') petId?: string, @Query('status') status?: string) {
+    findAll(
+        @Query() filterDto: VaccinationPlanFilterDto,
+        @Query('pet_id') petId?: string,
+        @Query('status') status?: string
+    ) {
         if (petId) {
-        return this.vaccinationPlansService.findByPet(+petId);
+            return this.vaccinationPlansService.findByPet(+petId, filterDto);
         }
         
         if (status === 'pending') {
-        return this.vaccinationPlansService.findPending();
+            return this.vaccinationPlansService.findPending(filterDto);
         }
         
-        return this.vaccinationPlansService.findAll();
+        return this.vaccinationPlansService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
