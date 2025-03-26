@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } f
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { AppointmentFilterDto } from './dto/appointment-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('appointments')
@@ -17,6 +18,7 @@ export class AppointmentsController {
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(
+        @Query() filterDto: AppointmentFilterDto,
         @Query('pet_id') petId?: string,
         @Query('veterinarian_id') veterinarianId?: string,
         @Query('status') status?: string,
@@ -24,22 +26,22 @@ export class AppointmentsController {
         @Query('end_date') endDate?: string
     ) {
         if (petId) {
-        return this.appointmentsService.findByPet(+petId);
+            return this.appointmentsService.findByPet(+petId, filterDto);
         }
         
         if (veterinarianId) {
-        return this.appointmentsService.findByVeterinarian(+veterinarianId);
+            return this.appointmentsService.findByVeterinarian(+veterinarianId, filterDto);
         }
         
         if (status === 'upcoming') {
-        return this.appointmentsService.findUpcoming();
+            return this.appointmentsService.findUpcoming(filterDto);
         }
         
         if (startDate && endDate) {
-        return this.appointmentsService.findByDateRange(new Date(startDate), new Date(endDate));
+            return this.appointmentsService.findByDateRange(new Date(startDate), new Date(endDate), filterDto);
         }
         
-        return this.appointmentsService.findAll();
+        return this.appointmentsService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
