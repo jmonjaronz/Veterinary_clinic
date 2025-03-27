@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } f
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { NotificationFilterDto } from './dto/notification-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('notifications')
@@ -16,15 +17,19 @@ export class NotificationsController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Query('user_id') userId?: string, @Query('status') status?: string) {
+    findAll(
+        @Query() filterDto: NotificationFilterDto,
+        @Query('user_id') userId?: string, 
+        @Query('status') status?: string
+    ) {
         if (userId) {
-        if (status === 'unread') {
-            return this.notificationsService.findUnreadByUser(+userId);
-        }
-        return this.notificationsService.findByUser(+userId);
+            if (status === 'unread') {
+                return this.notificationsService.findUnreadByUser(+userId, filterDto);
+            }
+            return this.notificationsService.findByUser(+userId, filterDto);
         }
         
-        return this.notificationsService.findAll();
+        return this.notificationsService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
