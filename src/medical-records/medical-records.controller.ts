@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } f
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
+import { MedicalRecordFilterDto } from './dto/medical-record-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('medical-records')
@@ -17,23 +18,24 @@ export class MedicalRecordsController {
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(
+        @Query() filterDto: MedicalRecordFilterDto,
         @Query('pet_id') petId?: string,
         @Query('veterinarian_id') veterinarianId?: string,
         @Query('appointment_id') appointmentId?: string
     ) {
         if (petId) {
-        return this.medicalRecordsService.findByPet(+petId);
+            return this.medicalRecordsService.findByPet(+petId, filterDto);
         }
         
         if (veterinarianId) {
-        return this.medicalRecordsService.findByVeterinarian(+veterinarianId);
+            return this.medicalRecordsService.findByVeterinarian(+veterinarianId, filterDto);
         }
         
         if (appointmentId) {
-        return this.medicalRecordsService.findByAppointment(+appointmentId);
+            return this.medicalRecordsService.findByAppointment(+appointmentId, filterDto);
         }
         
-        return this.medicalRecordsService.findAll();
+        return this.medicalRecordsService.findAll(filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
