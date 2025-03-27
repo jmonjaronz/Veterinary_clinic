@@ -83,6 +83,10 @@ export class MedicalRecordsService {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new MedicalRecordFilterDto();
         
+        // Definir tipos para la paginación
+        const page: number = filters.page || 1;
+        const perPage: number = filters.per_page || 10;
+        
         // Crear QueryBuilder para consultas avanzadas
         const queryBuilder = this.medicalRecordRepository
             .createQueryBuilder('mr')
@@ -148,35 +152,35 @@ export class MedicalRecordsService {
         }
         
         // Calcular skip para paginación
-        const skip = (filters.page - 1) * filters.per_page;
+        const skip = (page - 1) * perPage;
         
         // Aplicar paginación y ordenamiento
         queryBuilder
             .orderBy('mr.appointment_date', 'DESC')
             .skip(skip)
-            .take(filters.per_page);
+            .take(perPage);
         
         // Ejecutar la consulta
         const [data, total] = await queryBuilder.getManyAndCount();
         
         // Calcular metadatos de paginación
-        const lastPage = Math.ceil(total / filters.per_page);
+        const lastPage = Math.ceil(total / perPage);
         
         return {
             data,
             meta: {
                 total,
-                per_page: filters.per_page,
-                current_page: filters.page,
+                per_page: perPage,
+                current_page: page,
                 last_page: lastPage,
                 from: skip + 1,
                 to: skip + data.length,
             },
             links: {
-                first: `?page=1&per_page=${filters.per_page}`,
-                last: `?page=${lastPage}&per_page=${filters.per_page}`,
-                prev: filters.page > 1 ? `?page=${filters.page - 1}&per_page=${filters.per_page}` : null,
-                next: filters.page < lastPage ? `?page=${filters.page + 1}&per_page=${filters.per_page}` : null,
+                first: `?page=1&per_page=${perPage}`,
+                last: `?page=${lastPage}&per_page=${perPage}`,
+                prev: page > 1 ? `?page=${page - 1}&per_page=${perPage}` : null,
+                next: page < lastPage ? `?page=${page + 1}&per_page=${perPage}` : null,
             }
         };
     }
@@ -202,7 +206,10 @@ export class MedicalRecordsService {
         }
 
         // Crear una copia del filtro o uno nuevo si no hay
-        const filters = filterDto ? { ...filterDto } : new MedicalRecordFilterDto();
+        const filters = new MedicalRecordFilterDto();
+        if (filterDto) {
+            Object.assign(filters, filterDto);
+        }
         
         // Establecer el ID de la mascota en los filtros
         filters.pet_id = petId;
@@ -219,7 +226,10 @@ export class MedicalRecordsService {
         }
 
         // Crear una copia del filtro o uno nuevo si no hay
-        const filters = filterDto ? { ...filterDto } : new MedicalRecordFilterDto();
+        const filters = new MedicalRecordFilterDto();
+        if (filterDto) {
+            Object.assign(filters, filterDto);
+        }
         
         // Establecer el ID del veterinario en los filtros
         filters.veterinarian_id = veterinarianId;
@@ -236,7 +246,10 @@ export class MedicalRecordsService {
         }
 
         // Crear una copia del filtro o uno nuevo si no hay
-        const filters = filterDto ? { ...filterDto } : new MedicalRecordFilterDto();
+        const filters = new MedicalRecordFilterDto();
+        if (filterDto) {
+            Object.assign(filters, filterDto);
+        }
         
         // Establecer el ID de la cita en los filtros
         filters.appointment_id = appointmentId;
