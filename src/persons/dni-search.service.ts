@@ -1,60 +1,65 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { catchError, firstValueFrom } from 'rxjs';
-import { AxiosError } from 'axios';
+import { lastValueFrom } from 'rxjs';
+import { AxiosResponse } from 'axios';
 
-/**
- * Servicio para consultar datos por DNI desde una API externa.
- * Este servicio solo se utiliza durante el proceso de creación de personas.
- */
+// Agregar una interfaz explícita para la respuesta
+interface PersonData {
+    nombre: string;
+    apellido?: string;
+    direccion?: string;
+    telefono?: string;
+    email?: string;
+    [key: string]: any;
+}
+
 @Injectable()
 export class DniSearchService {
     constructor(private readonly httpService: HttpService) {}
 
-    /**
-     * Busca una persona por su DNI utilizando una API externa.
-     * Este método solo debe ser usado durante el proceso de creación.
-     * 
-     * @param dni DNI de la persona a buscar
-     * @returns Datos de la persona encontrada
-     */
-    async searchByDni(dni: string) {
+    async searchByDni(dni: string): Promise<PersonData> {
         try {
-        const { data } = await firstValueFrom(
-            this.httpService
-            .get(`http://facturae-garzasoft.com/facturacion/buscaCliente/BuscaCliente2.php?dni=${dni}&fe=N&token=qusEj_w7aHEpX`)
-            .pipe(
-                catchError((error: AxiosError) => {
-                throw new HttpException(
-                    {
-                    status: 0,
-                    msg: `Error en el servidor externo: ${error.message}`,
-                    },
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                );
-                }),
-            ),
+        // Tipado explícito para la respuesta de Axios
+        const response: AxiosResponse = await lastValueFrom(
+            this.httpService.get(
+            `http://facturae-garzasoft.com/facturacion/buscaCliente/BuscaCliente2.php?dni=${dni}&fe=N&token=qusEj_w7aHEpX`
+            )
         );
 
-        // Si no hay datos o la respuesta está vacía
+        const data: any = response.data;
+
+        // Verificar si hay datos
         if (!data || (Array.isArray(data) && data.length === 0)) {
             throw new HttpException(
             {
                 status: 0,
                 msg: `No se encontraron datos para el DNI ${dni}`,
             },
-            HttpStatus.NOT_FOUND,
+            HttpStatus.NOT_FOUND
             );
         }
 
-        return data;
-        } catch (error) {
+        // Devolver el primer elemento si es un array, o el objeto directamente
+        return Array.isArray(data) ? data[0] : data;
+        } catch (error: unknown) {
+        // Tipado explícito del error
+        // Si ya es una HttpException, simplemente la relanzamos
+        if (error instanceof HttpException) {
+            throw error;
+        }
+
+        // Usar tipo Record para verificar propiedades de manera segura
+        const errorObj = error as Record<string, any>;
+        const errorMessage = errorObj && typeof errorObj === 'object' && 'message' in errorObj 
+            ? String(errorObj.message) 
+            : 'Error desconocido';
+
         throw new HttpException(
             {
             status: 0,
-            msg: `Error del servidor: ${error.message}`,
+            msg: `Error del servidor: ${errorMessage}`,
             },
-            HttpStatus.INTERNAL_SERVER_ERROR,
+            HttpStatus.INTERNAL_SERVER_ERROR
         );
         }
     }
