@@ -22,7 +22,7 @@ export class PetsService {
         private readonly configService: ConfigService,
     ) {}
 
-    async create(createPetDto: CreatePetDto): Promise<Pet> {
+    async create(createPetDto: CreatePetDto): Promise<PetResponseDto> {
         // Verificar si el propietario existe
         const owner = await this.personRepository.findOne({ 
             where: { id: createPetDto.owner_id } 
@@ -30,7 +30,7 @@ export class PetsService {
         if (!owner) {
             throw new BadRequestException(`Propietario con ID ${createPetDto.owner_id} no encontrado`);
         }
-
+    
         // Verificar si la especie existe
         const species = await this.speciesRepository.findOne({ 
             where: { id: createPetDto.species_id } 
@@ -38,7 +38,7 @@ export class PetsService {
         if (!species) {
             throw new BadRequestException(`Especie con ID ${createPetDto.species_id} no encontrada`);
         }
-
+    
         // Crear la mascota
         const pet = this.petRepository.create(createPetDto);
         const savedPet = await this.petRepository.save(pet);
