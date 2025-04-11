@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
 import { SpeciesVaccinationPlan } from '../../species-vaccination-plans/entities/species-vaccination-plan.entity';
+import { VaccinationRecord } from './vaccination-record.entity';
 
 @Entity({ name: 'vaccination_plans' })
 export class VaccinationPlan {
@@ -21,15 +22,12 @@ export class VaccinationPlan {
     @JoinColumn({ name: 'species_vaccination_plan_id' })
     species_vaccination_plan: SpeciesVaccinationPlan;
 
-    @Column({ type: 'date' })
-    scheduled_date: Date;
-
-    @Column({ type: 'date', nullable: true })
-    administered_date: Date;
-
-    @Column({ default: 'pendiente' })
-    status: string; // pendiente, completado, cancelado
+    @Column({ default: 'activo' })
+    status: string;  // activo, inactivo, completado
 
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
+
+    @OneToMany(() => VaccinationRecord, record => record.vaccination_plan)
+    vaccination_records: VaccinationRecord[];
 }
