@@ -1,15 +1,15 @@
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsNumber, IsString } from 'class-validator';
 
-export class UpdateSpeciesVaccinationPlanDto {
+export class UpdateVaccinationPlanDto {
     @IsOptional()
-    @IsNumber({}, { message: 'El ID de la especie debe ser un número' })
-    species_id?: number;
-
-    @IsOptional()
-    @IsString({ message: 'El nombre del plan debe ser una cadena de texto' })
-    name?: string;
+    @IsNumber({}, { message: 'El ID de la mascota debe ser un número' })
+    pet_id?: number;
 
     @IsOptional()
-    @IsString({ message: 'La descripción debe ser una cadena de texto' })
-    description?: string;
+    @IsNumber({}, { message: 'El ID del plan de vacunación por especie debe ser un número' })
+    species_vaccination_plan_id?: number;
+
+    @IsOptional()
+    @IsString({ message: 'El estado debe ser una cadena de texto' })
+    status?: string;
 }
