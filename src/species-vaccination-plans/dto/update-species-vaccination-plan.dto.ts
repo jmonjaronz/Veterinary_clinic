@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, IsPositive } from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UpdateSpeciesVaccinationPlanDto {
     @IsOptional()
@@ -6,11 +6,10 @@ export class UpdateSpeciesVaccinationPlanDto {
     species_id?: number;
 
     @IsOptional()
-    @IsString({ message: 'El nombre de la vacuna debe ser una cadena de texto' })
-    vaccine?: string;
+    @IsString({ message: 'El nombre del plan debe ser una cadena de texto' })
+    name?: string;
 
     @IsOptional()
-    @IsNumber({}, { message: 'La edad recomendada debe ser un número' })
-    @IsPositive({ message: 'La edad recomendada debe ser positiva' })
-    recommended_age?: number;
+    @IsString({ message: 'La descripción debe ser una cadena de texto' })
+    description?: string;
 }

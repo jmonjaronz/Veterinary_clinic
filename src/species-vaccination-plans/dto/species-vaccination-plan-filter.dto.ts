@@ -21,17 +21,11 @@ export class SpeciesVaccinationPlanFilterDto {
 
     @IsOptional()
     @IsString()
-    vaccine?: string;
+    name?: string;
 
     @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    recommended_age_min?: number;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    recommended_age_max?: number;
+    @IsString()
+    description?: string;
 
     @IsOptional()
     @IsString()
