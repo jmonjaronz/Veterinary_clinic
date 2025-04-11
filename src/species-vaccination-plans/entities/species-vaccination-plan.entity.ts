@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Species } from '../../species/entities/species.entity';
+import { Vaccine } from '../../vaccines/entities/vaccine.entity';
 
 @Entity({ name: 'species_vaccination_plans' })
 export class SpeciesVaccinationPlan {
@@ -14,11 +15,14 @@ export class SpeciesVaccinationPlan {
     species: Species;
 
     @Column()
-    vaccine: string;
+    name: string;
 
-    @Column()
-    recommended_age: number;
+    @Column({ type: 'text', nullable: true })
+    description: string;
 
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
+
+    @OneToMany(() => Vaccine, vaccine => vaccine.species_vaccination_plan)
+    vaccines: Vaccine[];
 }
