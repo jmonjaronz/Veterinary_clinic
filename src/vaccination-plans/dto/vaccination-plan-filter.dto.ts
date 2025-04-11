@@ -1,7 +1,7 @@
 import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class VaccinationPlanFilterDto {
+export class SpeciesVaccinationPlanFilterDto {
     @IsOptional()
     @Type(() => Number)
     @IsInt()
@@ -17,49 +17,17 @@ export class VaccinationPlanFilterDto {
     @IsOptional()
     @Type(() => Number)
     @IsInt()
-    pet_id?: number;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    species_vaccination_plan_id?: number;
+    species_id?: number;
 
     @IsOptional()
     @IsString()
-    status?: string;
-
-    @IsOptional()
-    @Type(() => Date)
-    scheduled_date_start?: Date;
-
-    @IsOptional()
-    @Type(() => Date)
-    scheduled_date_end?: Date;
-
-    @IsOptional()
-    @Type(() => Date)
-    administered_date_start?: Date;
-
-    @IsOptional()
-    @Type(() => Date)
-    administered_date_end?: Date;
-
-    // Filtros para la mascota relacionada
-    @IsOptional()
-    @IsString()
-    pet_name?: string;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    owner_id?: number;
+    name?: string;
 
     @IsOptional()
     @IsString()
-    owner_name?: string;
+    description?: string;
 
-    // Filtros para el plan de vacunación por especie
     @IsOptional()
     @IsString()
-    vaccine?: string;
+    species_name?: string;
 }
