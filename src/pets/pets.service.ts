@@ -230,12 +230,13 @@ export class PetsService {
     
     // Método privado para transformar la respuesta
     private transformPetResponse(pet: Pet): PetResponseDto {
-        const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3000';
+        // En lugar de usar una URL base absoluta, usa una URL relativa a la raíz del servidor
+        // Esto funcionará independientemente del dominio donde se aloje la aplicación
         
-        // Transformar cada imagen para incluir la URL completa
+        // Transformar cada imagen para incluir la ruta relativa
         const transformedImages = pet.images?.map(image => ({
             ...image,
-            url: `${baseUrl}/${image.filePath}`
+            url: `/uploads/pets/${image.fileName}` // Usa la ruta relativa basada en el prefijo configurado
         })) || [];
         
         // Encontrar la imagen principal
@@ -247,7 +248,7 @@ export class PetsService {
             photo: pet.photo, // Mantener el valor original (puede ser null)
             images: transformedImages,
             mainImageUrl: mainImage ? mainImage.url : null,
-            photoUrl: pet.photo ? `${baseUrl}/${pet.photo}` : null
+            photoUrl: pet.photo ? `/uploads/${pet.photo.replace('uploads/', '')}` : null
         };
         
         return responseDto;
