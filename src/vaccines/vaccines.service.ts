@@ -194,7 +194,7 @@ export class VaccinesService {
             
             if (plan && plan.vaccines) { // Verificamos que plan y plan.vaccines no sean nulos
                 const existingVaccine = plan.vaccines.find(v => 
-                    v.name.toLowerCase() === updateVaccineDto.name.toLowerCase() && v.id !== id
+                    v.name.toLowerCase() === updateVaccineDto.name?.toLowerCase() && v.id !== id
                 );
                 
                 if (existingVaccine) {
