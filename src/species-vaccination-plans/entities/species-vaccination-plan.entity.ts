@@ -14,8 +14,8 @@ export class SpeciesVaccinationPlan {
     @JoinColumn({ name: 'species_id' })
     species: Species;
 
-    @Column()
-    name: string;
+    @Column({ nullable: true })
+    name:string;
 
     @Column({ type: 'text', nullable: true })
     description: string;
