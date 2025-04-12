@@ -192,12 +192,14 @@ export class VaccinesService {
                 relations: ['vaccines']
             });
             
-            const existingVaccine = plan.vaccines.find(v => 
-                v.name.toLowerCase() === updateVaccineDto.name.toLowerCase() && v.id !== id
-            );
-            
-            if (existingVaccine) {
-                throw new ConflictException(`Ya existe una vacuna con el nombre '${updateVaccineDto.name}' en este plan de vacunación`);
+            if (plan && plan.vaccines) { // Verificamos que plan y plan.vaccines no sean nulos
+                const existingVaccine = plan.vaccines.find(v => 
+                    v.name.toLowerCase() === updateVaccineDto.name.toLowerCase() && v.id !== id
+                );
+                
+                if (existingVaccine) {
+                    throw new ConflictException(`Ya existe una vacuna con el nombre '${updateVaccineDto.name}' en este plan de vacunación`);
+                }
             }
         }
 
