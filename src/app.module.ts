@@ -8,6 +8,7 @@ import { SpeciesModule } from './species/species.module';
 import { PetsModule } from './pets/pets.module';
 import {SpeciesVaccinationPlansModule} from './species-vaccination-plans/species-vaccination-plans.module';
 import {VaccinationPlansModule} from './vaccination-plans/vaccination-plans.module';
+import { VaccinesModule } from './vaccines/vaccines.module';
 import {AppointmentsModule} from './appointments/appointments.module';
 import {MedicalRecordsModule} from './medical-records/medical-records.module';
 import {HospitalizationsModule} from './hospitalizations/hospitalizations.module';
@@ -27,7 +28,8 @@ import {NotificationsModule} from './notifications/notifications.module'
     AppointmentsModule,
     MedicalRecordsModule,
     HospitalizationsModule,
-    NotificationsModule
+    NotificationsModule,
+    VaccinesModule
   ],
   controllers: [],
   providers: [],
