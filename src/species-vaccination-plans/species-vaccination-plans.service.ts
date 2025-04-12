@@ -17,7 +17,7 @@ export class SpeciesVaccinationPlansService {
     ) {}
 
     async create(createSpeciesVaccinationPlanDto: CreateSpeciesVaccinationPlanDto): Promise<SpeciesVaccinationPlan> {
-        const { species_id, vaccine, recommended_age } = createSpeciesVaccinationPlanDto;
+        const { species_id, name, description } = createSpeciesVaccinationPlanDto;
 
         // Verificar si la especie existe
         const species = await this.speciesRepository.findOne({ where: { id: species_id } });
@@ -25,20 +25,20 @@ export class SpeciesVaccinationPlansService {
             throw new NotFoundException(`Especie con ID ${species_id} no encontrada`);
         }
 
-        // Verificar si ya existe un plan con la misma vacuna para esta especie
+        // Verificar si ya existe un plan con el mismo nombre para esta especie
         const existingPlan = await this.speciesVaccinationPlanRepository.findOne({
-            where: { species_id, vaccine }
+            where: { species_id, name }
         });
 
         if (existingPlan) {
-            throw new ConflictException(`Ya existe un plan de vacunación para ${species.name} con la vacuna ${vaccine}`);
+            throw new ConflictException(`Ya existe un plan de vacunación para ${species.name} con el nombre ${name}`);
         }
 
         // Crear el plan de vacunación
         const speciesVaccinationPlan = this.speciesVaccinationPlanRepository.create({
             species_id,
-            vaccine,
-            recommended_age,
+            name,
+            description,
         });
 
         return this.speciesVaccinationPlanRepository.save(speciesVaccinationPlan);
@@ -51,27 +51,20 @@ export class SpeciesVaccinationPlansService {
         // Crear QueryBuilder para consultas avanzadas
         const queryBuilder = this.speciesVaccinationPlanRepository
             .createQueryBuilder('plan')
-            .leftJoinAndSelect('plan.species', 'species');
+            .leftJoinAndSelect('plan.species', 'species')
+            .leftJoinAndSelect('plan.vaccines', 'vaccines');
             
         // Aplicar filtros
         if (filters.species_id) {
             queryBuilder.andWhere('plan.species_id = :species_id', { species_id: filters.species_id });
         }
         
-        if (filters.vaccine) {
-            queryBuilder.andWhere('plan.vaccine LIKE :vaccine', { vaccine: `%${filters.vaccine}%` });
+        if (filters.name) {
+            queryBuilder.andWhere('plan.name LIKE :name', { name: `%${filters.name}%` });
         }
         
-        // Filtros de rango para edad recomendada
-        if (filters.recommended_age_min !== undefined && filters.recommended_age_max !== undefined) {
-            queryBuilder.andWhere('plan.recommended_age BETWEEN :min AND :max', {
-                min: filters.recommended_age_min,
-                max: filters.recommended_age_max
-            });
-        } else if (filters.recommended_age_min !== undefined) {
-            queryBuilder.andWhere('plan.recommended_age >= :min', { min: filters.recommended_age_min });
-        } else if (filters.recommended_age_max !== undefined) {
-            queryBuilder.andWhere('plan.recommended_age <= :max', { max: filters.recommended_age_max });
+        if (filters.description) {
+            queryBuilder.andWhere('plan.description LIKE :description', { description: `%${filters.description}%` });
         }
         
         // Filtro por nombre de especie (relación)
@@ -116,7 +109,7 @@ export class SpeciesVaccinationPlansService {
     async findOne(id: number): Promise<SpeciesVaccinationPlan> {
         const speciesVaccinationPlan = await this.speciesVaccinationPlanRepository.findOne({
             where: { id },
-            relations: ['species'],
+            relations: ['species', 'vaccines'],
         });
 
         if (!speciesVaccinationPlan) {
@@ -134,7 +127,7 @@ export class SpeciesVaccinationPlansService {
         }
 
         // Crear una copia del filtro o uno nuevo si no hay
-        const filters = filterDto ? new SpeciesVaccinationPlanFilterDto() : new SpeciesVaccinationPlanFilterDto();
+        const filters = filterDto ? { ...filterDto } : new SpeciesVaccinationPlanFilterDto();
         
         // Establecer el ID de la especie en los filtros
         filters.species_id = speciesId;
@@ -158,20 +151,20 @@ export class SpeciesVaccinationPlansService {
             }
         }
 
-        // Si se intenta cambiar la vacuna, verificar que no exista otra igual para la misma especie
-        if (updateSpeciesVaccinationPlanDto.vaccine && 
-            updateSpeciesVaccinationPlanDto.vaccine !== speciesVaccinationPlan.vaccine) {
+        // Si se intenta cambiar el nombre, verificar que no exista otro igual para la misma especie
+        if (updateSpeciesVaccinationPlanDto.name && 
+            updateSpeciesVaccinationPlanDto.name !== speciesVaccinationPlan.name) {
             const speciesId = updateSpeciesVaccinationPlanDto.species_id || speciesVaccinationPlan.species_id;
             
             const existingPlan = await this.speciesVaccinationPlanRepository.findOne({
                 where: { 
                     species_id: speciesId, 
-                    vaccine: updateSpeciesVaccinationPlanDto.vaccine 
+                    name: updateSpeciesVaccinationPlanDto.name 
                 }
             });
 
             if (existingPlan && existingPlan.id !== id) {
-                throw new ConflictException(`Ya existe un plan de vacunación para esta especie con la vacuna ${updateSpeciesVaccinationPlanDto.vaccine}`);
+                throw new ConflictException(`Ya existe un plan de vacunación para esta especie con el nombre ${updateSpeciesVaccinationPlanDto.name}`);
             }
         }
 
