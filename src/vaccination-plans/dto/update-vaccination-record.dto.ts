@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsDate, IsString } from 'class-validator';
+import { IsOptional, IsNumber, IsDate, IsString, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateVaccinationRecordDto {
@@ -9,6 +9,14 @@ export class UpdateVaccinationRecordDto {
     @IsOptional()
     @IsNumber({}, { message: 'El ID de la vacuna debe ser un número' })
     vaccine_id?: number;
+
+    @IsOptional()
+    @IsNumber({}, { message: 'El ID de la vacuna del plan debe ser un número' })
+    plan_vaccine_id?: number;
+
+    @IsOptional()
+    @IsBoolean({ message: 'El campo enabled debe ser un booleano' })
+    enabled?: boolean;
 
     @IsOptional()
     @Type(() => Date)
@@ -23,4 +31,8 @@ export class UpdateVaccinationRecordDto {
     @IsOptional()
     @IsString({ message: 'El estado debe ser una cadena de texto' })
     status?: string;
+
+    @IsOptional()
+    @IsString({ message: 'Las notas deben ser una cadena de texto' })
+    notes?: string;
 }
