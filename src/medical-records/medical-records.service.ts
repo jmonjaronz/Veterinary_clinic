@@ -5,9 +5,13 @@ import { MedicalRecord } from './entities/medical-record.entity';
 import { Pet } from '../pets/entities/pet.entity';
 import { Person } from '../persons/entities/person.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
+import { Treatment } from '../treatments/entities/treatment.entity';
+import { Hospitalization } from '../hospitalizations/entities/hospitalization.entity';
+import { VaccinationRecord } from '../vaccination-plans/entities/vaccination-record.entity';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
 import { MedicalRecordFilterDto } from './dto/medical-record-filter.dto';
+import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -20,6 +24,12 @@ export class MedicalRecordsService {
         private readonly personRepository: Repository<Person>,
         @InjectRepository(Appointment)
         private readonly appointmentRepository: Repository<Appointment>,
+        @InjectRepository(Treatment)
+        private readonly treatmentRepository: Repository<Treatment>,
+        @InjectRepository(Hospitalization)
+        private readonly hospitalizationRepository: Repository<Hospitalization>,
+        @InjectRepository(VaccinationRecord)
+        private readonly vaccinationRecordRepository: Repository<VaccinationRecord>,
     ) {}
 
     async create(createMedicalRecordDto: CreateMedicalRecordDto): Promise<MedicalRecord> {
@@ -328,5 +338,180 @@ export class MedicalRecordsService {
         if (result.affected === 0) {
             throw new NotFoundException(`Registro médico con ID ${id} no encontrado`);
         }
+    }
+
+    async getPetCompleteHistory(petId: number): Promise<PetCompleteHistoryDto> {
+        // Verificar si la mascota existe
+        const pet = await this.petRepository.findOne({
+            where: { id: petId },
+            relations: ['owner', 'species']
+        });
+        
+        if (!pet) {
+            throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
+        }
+
+        // Obtener registros médicos
+        const medicalRecords = await this.medicalRecordRepository.find({
+            where: { pet_id: petId },
+            relations: ['veterinarian', 'appointment', 'treatments'],
+            order: { appointment_date: 'DESC' }
+        });
+
+        // Obtener citas
+        const appointments = await this.appointmentRepository.find({
+            where: { pet_id: petId },
+            relations: ['veterinarian'],
+            order: { date: 'DESC' }
+        });
+
+        // Obtener hospitalizaciones
+        const hospitalizations = await this.hospitalizationRepository.find({
+            where: { pet_id: petId },
+            relations: ['veterinarian'],
+            order: { admission_date: 'DESC' }
+        });
+
+        // Obtener tratamientos directamente (no vinculados a un registro médico)
+        const treatments = await this.treatmentRepository
+            .createQueryBuilder('treatment')
+            .innerJoin('treatment.medical_record', 'mr')
+            .where('mr.pet_id = :petId', { petId })
+            .leftJoinAndSelect('treatment.medical_record', 'medical_record')
+            .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
+            .orderBy('treatment.date', 'DESC')
+            .getMany();
+
+        // Obtener vacunas aplicadas (status='completado')
+        const vaccinations = await this.vaccinationRecordRepository
+            .createQueryBuilder('vr')
+            .innerJoin('vr.vaccination_plan', 'vp')
+            .innerJoin('vp.pet', 'pet')
+            .where('pet.id = :petId', { petId })
+            .andWhere('vr.status = :status', { status: 'completado' })
+            .leftJoinAndSelect('vr.vaccine', 'vaccine')
+            .leftJoinAndSelect('vr.vaccination_plan', 'plan')
+            .orderBy('vr.administered_date', 'DESC')
+            .getMany();
+
+        // Crear timeline unificado
+        const timeline = this.createTimelineFromRecords(
+            medicalRecords,
+            appointments,
+            hospitalizations,
+            treatments,
+            vaccinations
+        );
+
+        // Construir respuesta
+        const response: PetCompleteHistoryDto = {
+            medical_records: medicalRecords,
+            appointments,
+            hospitalizations,
+            treatments,
+            vaccinations,
+            pet_info: {
+                id: pet.id,
+                name: pet.name,
+                species: pet.species.name,
+                breed: pet.breed,
+                age: pet.age,
+                owner_name: pet.owner.full_name
+            },
+            timeline
+        };
+
+        return response;
+    }
+
+    private createTimelineFromRecords(
+        medicalRecords: MedicalRecord[],
+        appointments: Appointment[],
+        hospitalizations: Hospitalization[],
+        treatments: Treatment[],
+        vaccinations: VaccinationRecord[]
+    ): Array<{
+        id: string;
+        type: 'medical_record' | 'appointment' | 'hospitalization' | 'treatment' | 'vaccination';
+        date: Date;
+        description: string;
+        veterinarian?: string;
+        status?: string;
+    }> {
+        const timeline = [];
+    
+        // Agregar registros médicos al timeline
+        medicalRecords.forEach(record => {
+            if (record.appointment_date) {
+                timeline.push({
+                    id: `mr_${record.id}`,
+                    type: 'medical_record' as const,
+                    date: new Date(record.appointment_date),
+                    description: `Diagnóstico: ${record.diagnosis}`,
+                    veterinarian: record.veterinarian?.full_name
+                });
+            }
+        });
+    
+        // Agregar citas al timeline
+        appointments.forEach(appointment => {
+            if (appointment.date) {
+                timeline.push({
+                    id: `app_${appointment.id}`,
+                    type: 'appointment' as const,
+                    date: new Date(appointment.date),
+                    description: `Cita ${appointment.appointment_type}`,
+                    veterinarian: appointment.veterinarian?.full_name,
+                    status: appointment.status
+                });
+            }
+        });
+    
+        // Agregar hospitalizaciones al timeline
+        hospitalizations.forEach(hospitalization => {
+            if (hospitalization.admission_date) {
+                timeline.push({
+                    id: `hosp_${hospitalization.id}`,
+                    type: 'hospitalization' as const,
+                    date: new Date(hospitalization.admission_date),
+                    description: `Hospitalización: ${hospitalization.reason}`,
+                    veterinarian: hospitalization.veterinarian?.full_name,
+                    status: hospitalization.discharge_date ? 'Alta' : 'En curso'
+                });
+            }
+        });
+    
+        // Agregar tratamientos al timeline
+        treatments.forEach(treatment => {
+            if (treatment.date) {
+                timeline.push({
+                    id: `treat_${treatment.id}`,
+                    type: 'treatment' as const,
+                    date: new Date(treatment.date),
+                    description: `Tratamiento: ${treatment.reason}`,
+                    veterinarian: treatment.medical_record?.veterinarian?.full_name
+                });
+            }
+        });
+    
+        // Agregar vacunas al timeline
+        vaccinations.forEach(vaccination => {
+            if (vaccination.administered_date) {
+                timeline.push({
+                    id: `vac_${vaccination.id}`,
+                    type: 'vaccination' as const,
+                    date: new Date(vaccination.administered_date),
+                    description: `Vacuna aplicada: ${vaccination.vaccine?.name || 'Vacuna'}`,
+                    status: vaccination.status
+                });
+            }
+        });
+    
+        // Ordenar el timeline por fecha descendente
+        return timeline.sort((a, b) => {
+            const dateA = a.date.getTime();
+            const dateB = b.date.getTime();
+            return dateB - dateA;
+        });
     }
 }

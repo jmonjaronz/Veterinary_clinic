@@ -1,8 +1,10 @@
+
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
 import { MedicalRecordFilterDto } from './dto/medical-record-filter.dto';
+import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('medical-records')
@@ -42,6 +44,12 @@ export class MedicalRecordsController {
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.medicalRecordsService.findOne(+id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('pet/:petId/complete-history')
+    getPetCompleteHistory(@Param('petId') petId: string): Promise<PetCompleteHistoryDto> {
+        return this.medicalRecordsService.getPetCompleteHistory(+petId);
     }
 
     @UseGuards(JwtAuthGuard)
