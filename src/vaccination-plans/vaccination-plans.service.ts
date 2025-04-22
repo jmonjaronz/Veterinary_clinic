@@ -10,6 +10,7 @@ import { CreateVaccinationPlanDto } from './dto/create-vaccination-plan.dto';
 import { UpdateVaccinationPlanDto } from './dto/update-vaccination-plan.dto';
 import { VaccinationPlanFilterDto } from './dto/vaccination-plan-filter.dto';
 import { CreateVaccinationRecordDto } from './dto/create-vaccination-record.dto';
+import { UpdateVaccinationRecordDto } from './dto/update-vaccination-record.dto';
 
 @Injectable()
 export class VaccinationPlansService {
@@ -74,32 +75,45 @@ export class VaccinationPlansService {
 
         const savedPlan = await this.vaccinationPlanRepository.save(vaccinationPlan);
 
-        // Crear registros de vacunación para cada vacuna en el plan
+        // Clonar las vacunas del plan para crear registros específicos para esta mascota
         if (speciesVaccinationPlan.vaccines && speciesVaccinationPlan.vaccines.length > 0) {
             const now = new Date();
-            const petAge = pet.age || 0; // Edad en meses (o 0 si no está definida)
+            const petAge = pet.age || 0; // Edad en meses
             
             for (const vaccine of speciesVaccinationPlan.vaccines) {
                 // Calcular la fecha programada basada en la edad de la mascota y la edad de aplicación de la vacuna
                 let scheduledDate: Date;
+                let isEnabled = true;
                 
                 if (petAge >= vaccine.application_age) {
-                    // Si la mascota ya tiene la edad suficiente, programar para pronto
-                    scheduledDate = new Date(now);
-                    scheduledDate.setDate(scheduledDate.getDate() + 7); // Una semana después
+                    // Para mascotas adultas o que ya pasaron la edad de aplicación
+                    if (vaccine.is_mandatory) {
+                        // Si es obligatoria, programar para pronto
+                        scheduledDate = new Date(now);
+                        scheduledDate.setDate(scheduledDate.getDate() + 7);
+                    } else {
+                        // Si no es obligatoria, programar pero posiblemente deshabilitar
+                        scheduledDate = new Date(now);
+                        scheduledDate.setDate(scheduledDate.getDate() + 14);
+                        // Podría deshabilitarse basado en criterios adicionales
+                        isEnabled = petAge - vaccine.application_age <= 6; // ejemplo: deshabilitar si pasaron más de 6 meses
+                    }
                 } else {
-                    // Si la mascota aún no tiene la edad, calcular cuándo la tendrá
+                    // Para mascotas jóvenes que aún no han alcanzado la edad de aplicación
                     const monthsToWait = vaccine.application_age - petAge;
                     scheduledDate = new Date(now);
                     scheduledDate.setMonth(scheduledDate.getMonth() + monthsToWait);
                 }
                 
-                // Crear el registro de vacunación
+                // Crear el registro de vacunación con la nueva estructura
                 await this.vaccinationRecordRepository.save({
                     vaccination_plan_id: savedPlan.id,
                     vaccine_id: vaccine.id,
+                    plan_vaccine_id: vaccine.id, // Referencia a la vacuna original del plan
+                    enabled: isEnabled,
                     scheduled_date: scheduledDate,
-                    status: 'pendiente'
+                    status: 'pendiente',
+                    notes: `Vacuna clonada del plan: ${vaccine.name}`
                 });
             }
         }
@@ -120,7 +134,8 @@ export class VaccinationPlansService {
             .leftJoinAndSelect('vp.species_vaccination_plan', 'svp')
             .leftJoinAndSelect('svp.species', 'species')
             .leftJoinAndSelect('vp.vaccination_records', 'records')
-            .leftJoinAndSelect('records.vaccine', 'vaccine');
+            .leftJoinAndSelect('records.vaccine', 'vaccine')
+            .leftJoinAndSelect('records.plan_vaccine', 'plan_vaccine');
             
         // Aplicar filtros de plan de vacunación
         if (filters.pet_id) {
@@ -202,7 +217,8 @@ export class VaccinationPlansService {
                 'species_vaccination_plan', 
                 'species_vaccination_plan.species',
                 'vaccination_records',
-                'vaccination_records.vaccine'
+                'vaccination_records.vaccine',
+                'vaccination_records.plan_vaccine'
             ],
         });
 
@@ -320,6 +336,94 @@ export class VaccinationPlansService {
     }
 
     // Métodos para gestionar los registros de vacunación
+    async toggleVaccineEnabled(recordId: number, enabled: boolean): Promise<VaccinationRecord> {
+        const record = await this.vaccinationRecordRepository.findOne({
+            where: { id: recordId },
+            relations: ['vaccination_plan', 'vaccine']
+        });
+        
+        if (!record) {
+            throw new NotFoundException(`Registro de vacunación con ID ${recordId} no encontrado`);
+        }
+
+        if (record.status === 'completado') {
+            throw new BadRequestException(`No se puede modificar un registro de vacunación completado`);
+        }
+
+        record.enabled = enabled;
+        if (!enabled) {
+            record.notes = (record.notes || '') + `\nDeshabilitada el ${new Date().toISOString()}`;
+        } else {
+            record.notes = (record.notes || '') + `\nHabilitada el ${new Date().toISOString()}`;
+        }
+        
+        return this.vaccinationRecordRepository.save(record);
+    }
+
+    async updateVaccinationRecord(recordId: number, updateDto: UpdateVaccinationRecordDto): Promise<VaccinationRecord> {
+        const record = await this.vaccinationRecordRepository.findOne({
+            where: { id: recordId },
+            relations: ['vaccination_plan', 'vaccine']
+        });
+        
+        if (!record) {
+            throw new NotFoundException(`Registro de vacunación con ID ${recordId} no encontrado`);
+        }
+
+        // Validaciones específicas
+        if (updateDto.status === 'completado' && !updateDto.administered_date && !record.administered_date) {
+            throw new BadRequestException(`Debe proporcionar una fecha de administración para completar el registro`);
+        }
+
+        // Si se intenta cambiar la vacuna, verificar que exista
+        if (updateDto.vaccine_id && updateDto.vaccine_id !== record.vaccine_id) {
+            const vaccine = await this.vaccineRepository.findOne({ 
+                where: { id: updateDto.vaccine_id } 
+            });
+            
+            if (!vaccine) {
+                throw new NotFoundException(`Vacuna con ID ${updateDto.vaccine_id} no encontrada`);
+            }
+        }
+
+        Object.assign(record, updateDto);
+        
+        // Si se está marcando como completado, asegurar que tenga fecha de administración
+        if (updateDto.status === 'completado' && !record.administered_date) {
+            record.administered_date = new Date();
+        }
+        
+        return this.vaccinationRecordRepository.save(record);
+    }
+
+    async applyVaccine(recordId: number, administeredDate?: Date, notes?: string): Promise<VaccinationRecord> {
+        const record = await this.vaccinationRecordRepository.findOne({
+            where: { id: recordId },
+            relations: ['vaccination_plan', 'vaccine']
+        });
+        
+        if (!record) {
+            throw new NotFoundException(`Registro de vacunación con ID ${recordId} no encontrado`);
+        }
+
+        if (!record.enabled) {
+            throw new BadRequestException(`Esta vacuna está deshabilitada y no puede ser aplicada`);
+        }
+
+        if (record.status === 'completado') {
+            throw new BadRequestException(`Esta vacuna ya ha sido aplicada`);
+        }
+
+        record.status = 'completado';
+        record.administered_date = administeredDate || new Date();
+        if (notes) {
+            record.notes = (record.notes || '') + `\n${notes}`;
+        }
+        
+        return this.vaccinationRecordRepository.save(record);
+    }
+
+    // Métodos para gestionar los registros de vacunación manteniendo compatibilidad
     async addVaccinationRecord(createVaccinationRecordDto: CreateVaccinationRecordDto): Promise<VaccinationRecord> {
         const { vaccination_plan_id, vaccine_id, scheduled_date, status } = createVaccinationRecordDto;
 
@@ -365,35 +469,18 @@ export class VaccinationPlansService {
         const record = this.vaccinationRecordRepository.create({
             vaccination_plan_id,
             vaccine_id,
+            plan_vaccine_id: createVaccinationRecordDto.plan_vaccine_id || vaccine_id,
+            enabled: createVaccinationRecordDto.enabled !== undefined ? createVaccinationRecordDto.enabled : true,
             scheduled_date,
             status: status || 'pendiente',
+            notes: createVaccinationRecordDto.notes
         });
 
         return this.vaccinationRecordRepository.save(record);
     }
 
     async completeVaccinationRecord(recordId: number, administered_date: Date): Promise<VaccinationRecord> {
-        const record = await this.vaccinationRecordRepository.findOne({
-            where: { id: recordId },
-            relations: ['vaccination_plan', 'vaccine']
-        });
-        
-        if (!record) {
-            throw new NotFoundException(`Registro de vacunación con ID ${recordId} no encontrado`);
-        }
-
-        if (record.status === 'completado') {
-            throw new BadRequestException(`Este registro de vacunación ya está completado`);
-        }
-
-        if (record.status === 'cancelado') {
-            throw new BadRequestException(`No se puede completar un registro de vacunación cancelado`);
-        }
-
-        record.status = 'completado';
-        record.administered_date = administered_date || new Date();
-        
-        return this.vaccinationRecordRepository.save(record);
+        return this.applyVaccine(recordId, administered_date);
     }
 
     async cancelVaccinationRecord(recordId: number): Promise<VaccinationRecord> {
@@ -415,6 +502,7 @@ export class VaccinationPlansService {
         }
 
         record.status = 'cancelado';
+        record.notes = (record.notes || '') + `\nCancelado el ${new Date().toISOString()}`;
         
         return this.vaccinationRecordRepository.save(record);
     }
@@ -437,7 +525,9 @@ export class VaccinationPlansService {
             throw new BadRequestException(`No se puede reprogramar un registro de vacunación cancelado`);
         }
 
+        const oldDate = record.scheduled_date;
         record.scheduled_date = scheduled_date;
+        record.notes = (record.notes || '') + `\nReprogramado de ${oldDate.toISOString()} a ${scheduled_date.toISOString()}`;
         
         return this.vaccinationRecordRepository.save(record);
     }
