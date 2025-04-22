@@ -6,13 +6,14 @@ import { UsersModule } from './users/users.module';
 import { PersonsModule } from './persons/persons.module';
 import { SpeciesModule } from './species/species.module';
 import { PetsModule } from './pets/pets.module';
-import {SpeciesVaccinationPlansModule} from './species-vaccination-plans/species-vaccination-plans.module';
-import {VaccinationPlansModule} from './vaccination-plans/vaccination-plans.module';
+import { SpeciesVaccinationPlansModule } from './species-vaccination-plans/species-vaccination-plans.module';
+import { VaccinationPlansModule } from './vaccination-plans/vaccination-plans.module';
 import { VaccinesModule } from './vaccines/vaccines.module';
-import {AppointmentsModule} from './appointments/appointments.module';
-import {MedicalRecordsModule} from './medical-records/medical-records.module';
-import {HospitalizationsModule} from './hospitalizations/hospitalizations.module';
-import {NotificationsModule} from './notifications/notifications.module'
+import { AppointmentsModule } from './appointments/appointments.module';
+import { MedicalRecordsModule } from './medical-records/medical-records.module';
+import { HospitalizationsModule } from './hospitalizations/hospitalizations.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { TreatmentsModule } from './treatments/treatments.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import {NotificationsModule} from './notifications/notifications.module'
     MedicalRecordsModule,
     HospitalizationsModule,
     NotificationsModule,
-    VaccinesModule
+    VaccinesModule,
+    TreatmentsModule
   ],
   controllers: [],
   providers: [],
