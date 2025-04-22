@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class VaccinationRecordFilterDto {
@@ -25,6 +25,16 @@ export class VaccinationRecordFilterDto {
     vaccine_id?: number;
 
     @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    plan_vaccine_id?: number;
+
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    enabled?: boolean;
+
+    @IsOptional()
     @IsString()
     status?: string;
 
@@ -48,4 +58,9 @@ export class VaccinationRecordFilterDto {
     @IsOptional()
     @IsString()
     vaccine_name?: string;
+
+    // Filtro para notas
+    @IsOptional()
+    @IsString()
+    notes_contains?: string;
 }
