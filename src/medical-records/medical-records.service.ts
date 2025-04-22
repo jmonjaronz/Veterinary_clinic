@@ -435,17 +435,24 @@ export class MedicalRecordsService {
         type: 'medical_record' | 'appointment' | 'hospitalization' | 'treatment' | 'vaccination';
         date: Date;
         description: string;
-        veterinarian?: string;
-        status?: string;
+        veterinarian?: string | undefined;
+        status?: string | undefined;
     }> {
-        const timeline = [];
+        const timeline: Array<{
+            id: string;
+            type: 'medical_record' | 'appointment' | 'hospitalization' | 'treatment' | 'vaccination';
+            date: Date;
+            description: string;
+            veterinarian?: string | undefined;
+            status?: string | undefined;
+        }> = [];
     
         // Agregar registros médicos al timeline
-        medicalRecords.forEach(record => {
+        medicalRecords.forEach((record: MedicalRecord) => {
             if (record.appointment_date) {
                 timeline.push({
                     id: `mr_${record.id}`,
-                    type: 'medical_record' as const,
+                    type: 'medical_record',
                     date: new Date(record.appointment_date),
                     description: `Diagnóstico: ${record.diagnosis}`,
                     veterinarian: record.veterinarian?.full_name
@@ -454,11 +461,11 @@ export class MedicalRecordsService {
         });
     
         // Agregar citas al timeline
-        appointments.forEach(appointment => {
+        appointments.forEach((appointment: Appointment) => {
             if (appointment.date) {
                 timeline.push({
                     id: `app_${appointment.id}`,
-                    type: 'appointment' as const,
+                    type: 'appointment',
                     date: new Date(appointment.date),
                     description: `Cita ${appointment.appointment_type}`,
                     veterinarian: appointment.veterinarian?.full_name,
@@ -468,11 +475,11 @@ export class MedicalRecordsService {
         });
     
         // Agregar hospitalizaciones al timeline
-        hospitalizations.forEach(hospitalization => {
+        hospitalizations.forEach((hospitalization: Hospitalization) => {
             if (hospitalization.admission_date) {
                 timeline.push({
                     id: `hosp_${hospitalization.id}`,
-                    type: 'hospitalization' as const,
+                    type: 'hospitalization',
                     date: new Date(hospitalization.admission_date),
                     description: `Hospitalización: ${hospitalization.reason}`,
                     veterinarian: hospitalization.veterinarian?.full_name,
@@ -482,11 +489,11 @@ export class MedicalRecordsService {
         });
     
         // Agregar tratamientos al timeline
-        treatments.forEach(treatment => {
+        treatments.forEach((treatment: Treatment) => {
             if (treatment.date) {
                 timeline.push({
                     id: `treat_${treatment.id}`,
-                    type: 'treatment' as const,
+                    type: 'treatment',
                     date: new Date(treatment.date),
                     description: `Tratamiento: ${treatment.reason}`,
                     veterinarian: treatment.medical_record?.veterinarian?.full_name
@@ -495,11 +502,11 @@ export class MedicalRecordsService {
         });
     
         // Agregar vacunas al timeline
-        vaccinations.forEach(vaccination => {
+        vaccinations.forEach((vaccination: VaccinationRecord) => {
             if (vaccination.administered_date) {
                 timeline.push({
                     id: `vac_${vaccination.id}`,
-                    type: 'vaccination' as const,
+                    type: 'vaccination',
                     date: new Date(vaccination.administered_date),
                     description: `Vacuna aplicada: ${vaccination.vaccine?.name || 'Vacuna'}`,
                     status: vaccination.status
@@ -509,8 +516,9 @@ export class MedicalRecordsService {
     
         // Ordenar el timeline por fecha descendente
         return timeline.sort((a, b) => {
-            const dateA = a.date.getTime();
-            const dateB = b.date.getTime();
+            if (!a.date || !b.date) return 0;
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
             return dateB - dateA;
         });
     }
