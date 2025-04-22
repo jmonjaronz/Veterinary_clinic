@@ -2,7 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
-import { Treatment } from '../../treatments/entities/treatment.entity';
 
 @Entity({ name: 'medical_records' })
 export class MedicalRecord {
@@ -48,7 +47,7 @@ export class MedicalRecord {
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
 
-    // Relación con tratamientos
-    @OneToMany(() => Treatment, treatment => treatment.medical_record)
-    treatments: Treatment[];
+    // Relación con tratamientos - usando string para evitar importación circular
+    @OneToMany('Treatment', 'medical_record')
+    treatments: any[];
 }
