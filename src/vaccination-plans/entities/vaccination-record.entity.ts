@@ -21,6 +21,18 @@ export class VaccinationRecord {
     @JoinColumn({ name: 'vaccine_id' })
     vaccine: Vaccine;
 
+    // Nuevo campo para referenciar la vacuna original del plan
+    @Column({ nullable: true })
+    plan_vaccine_id: number;
+
+    @ManyToOne(() => Vaccine)
+    @JoinColumn({ name: 'plan_vaccine_id' })
+    plan_vaccine: Vaccine;
+
+    // Nuevo campo para habilitar/deshabilitar la vacuna
+    @Column({ default: true })
+    enabled: boolean;
+
     @Column({ type: 'date' })
     scheduled_date: Date;
 
@@ -29,6 +41,10 @@ export class VaccinationRecord {
 
     @Column({ default: 'pendiente' })
     status: string;  // pendiente, completado, cancelado
+
+    // Nuevo campo para notas adicionales
+    @Column({ type: 'text', nullable: true })
+    notes: string;
 
     @CreateDateColumn({ name: 'created_at' })
     created_at: Date;
