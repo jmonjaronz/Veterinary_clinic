@@ -30,10 +30,9 @@ export class DniSearchService {
     /**
      * Busca una persona por su DNI y devuelve los datos formateados
      * @param dni Número de DNI a consultar
-     * @param role Rol opcional que se asignará a la persona (cliente, staff, etc.)
      * @returns Datos de la persona formateados según la estructura de la aplicación
      */
-    async searchByDni(dni: string, role: string = 'cliente'): Promise<PersonData> {
+    async searchByDni(dni: string): Promise<PersonData> {
         try {
             // Tipado explícito para la respuesta de Axios
             const response: AxiosResponse = await lastValueFrom(

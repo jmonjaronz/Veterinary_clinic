@@ -6,6 +6,11 @@ import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+interface CreateFromDniDto {
+    dni: string;
+    role?: string;
+}
+
 @Controller('persons')
 export class PersonsController {
     constructor(
@@ -21,7 +26,7 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Post('create-from-dni')
-    async createFromDni(@Body() body: { dni: string, role?: string }) {
+    async createFromDni(@Body() body: CreateFromDniDto) {
         const role = body.role || 'cliente';
         
         // Verificar si la persona ya existe en la base de datos
@@ -40,7 +45,7 @@ export class PersonsController {
         }
         
         // Buscar la persona por DNI en la API externa
-        const personData = await this.dniSearchService.searchByDni(body.dni, role);
+        const personData = await this.dniSearchService.searchByDni(body.dni);
         
         // Crear un DTO de persona a partir de los datos obtenidos
         const createPersonDto: CreatePersonDto = {
@@ -65,8 +70,14 @@ export class PersonsController {
     @UseGuards(JwtAuthGuard)
     @Post('create-veterinarian-from-dni')
     async createVeterinarianFromDni(@Body() body: { dni: string }) {
-        // Utilizamos el mismo endpoint pero establecemos el rol como 'staff'
-        return this.createFromDni({ dni: body.dni, role: 'staff' });
+        // Crear objeto compatible con la interfaz
+        const data: CreateFromDniDto = {
+            dni: body.dni,
+            role: 'staff'
+        };
+        
+        // Utilizar el método existente
+        return this.createFromDni(data);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -99,7 +110,7 @@ export class PersonsController {
                     address: personData.address
                 }
             };
-        } catch (error) {
+        } catch {
             return {
                 source: 'none',
                 message: 'No se encontró información para este DNI'
