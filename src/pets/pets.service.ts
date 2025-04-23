@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Pet } from './entities/pet.entity';
 import { Person } from '../persons/entities/person.entity';
 import { Species } from '../species/entities/species.entity';
@@ -41,6 +43,12 @@ export class PetsService {
     
         // Crear la mascota
         const pet = this.petRepository.create(createPetDto);
+        
+        // Actualizar la edad automáticamente si hay fecha de nacimiento
+        if (pet.birth_date) {
+            this.calculateAge(pet);
+        }
+        
         const savedPet = await this.petRepository.save(pet);
         
         // Buscar el pet guardado con sus relaciones para transformarlo
@@ -88,6 +96,18 @@ export class PetsService {
             queryBuilder.andWhere('pet.age <= :age_max', { age_max: filters.age_max });
         }
 
+        // Filtros de rango para fecha de nacimiento
+        if (filters.birth_date_start && filters.birth_date_end) {
+            queryBuilder.andWhere('pet.birth_date BETWEEN :birth_date_start AND :birth_date_end', {
+                birth_date_start: filters.birth_date_start,
+                birth_date_end: filters.birth_date_end
+            });
+        } else if (filters.birth_date_start) {
+            queryBuilder.andWhere('pet.birth_date >= :birth_date_start', { birth_date_start: filters.birth_date_start });
+        } else if (filters.birth_date_end) {
+            queryBuilder.andWhere('pet.birth_date <= :birth_date_end', { birth_date_end: filters.birth_date_end });
+        }
+
         // Filtros de rango para peso
         if (filters.weight_min !== undefined && filters.weight_max !== undefined) {
             queryBuilder.andWhere('pet.weight BETWEEN :weight_min AND :weight_max', {
@@ -106,7 +126,14 @@ export class PetsService {
         }
 
         if (filters.species_name) {
-            queryBuilder.andWhere('species.id LIKE :species_name', { species_name: `%${filters.species_name}%` });
+            queryBuilder.andWhere('species.name LIKE :species_name', { species_name: `%${filters.species_name}%` });
+        }
+
+        // Filtro para documento de consentimiento
+        if (filters.has_consent_document === 'yes') {
+            queryBuilder.andWhere('pet.consent_document IS NOT NULL');
+        } else if (filters.has_consent_document === 'no') {
+            queryBuilder.andWhere('pet.consent_document IS NULL');
         }
 
         // Calcular skip para paginación
@@ -211,6 +238,19 @@ export class PetsService {
             }
         }
 
+        // Si se actualiza la fecha de nacimiento, actualizar automáticamente la edad
+        if (updatePetDto.birth_date && (!pet.birth_date || 
+            new Date(updatePetDto.birth_date).getTime() !== new Date(pet.birth_date).getTime())) {
+            // Actualizar la fecha de nacimiento
+            pet.birth_date = updatePetDto.birth_date;
+            
+            // Calcular la nueva edad
+            this.calculateAge(pet);
+            
+            // Eliminar la edad del DTO para evitar sobrescribir el cálculo automático
+            delete updatePetDto.age;
+        }
+
         // Actualizar campos
         Object.assign(pet, updatePetDto);
         
@@ -227,16 +267,53 @@ export class PetsService {
             throw new NotFoundException(`Mascota con ID ${id} no encontrada`);
         }
     }
+
+    // Método para subir documento de consentimiento
+    async uploadConsentDocument(petId: number, file: Express.Multer.File): Promise<PetResponseDto> {
+        // Verificar si la mascota existe
+        const pet = await this.petRepository.findOne({
+            where: { id: petId },
+            relations: ['owner', 'species', 'images'],
+        });
+        
+        if (!pet) {
+            throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
+        }
+
+        // Si ya existe un documento previo, eliminarlo
+        if (pet.consent_document) {
+            const oldFilePath = path.join(
+                __dirname, 
+                '..', 
+                '..', 
+                'uploads/consents', 
+                pet.consent_document.replace('uploads/consents/', '')
+            );
+            
+            try {
+                if (fs.existsSync(oldFilePath)) {
+                    fs.unlinkSync(oldFilePath);
+                }
+            } catch (error) {
+                console.error(`Error al eliminar el documento previo: ${error}`);
+            }
+        }
+
+        // Guardar la referencia al nuevo documento
+        pet.consent_document = `uploads/consents/${file.filename}`;
+        
+        await this.petRepository.save(pet);
+        
+        // Retornar la mascota actualizada
+        return this.transformPetResponse(pet);
+    }
     
     // Método privado para transformar la respuesta
     private transformPetResponse(pet: Pet): PetResponseDto {
-        // En lugar de usar una URL base absoluta, usa una URL relativa a la raíz del servidor
-        // Esto funcionará independientemente del dominio donde se aloje la aplicación
-        
         // Transformar cada imagen para incluir la ruta relativa
         const transformedImages = pet.images?.map(image => ({
             ...image,
-            url: `/uploads/pets/${image.fileName}` // Usa la ruta relativa basada en el prefijo configurado
+            url: `/uploads/pets/${image.fileName}` // Usar la ruta relativa basada en el prefijo configurado
         })) || [];
         
         // Encontrar la imagen principal
@@ -248,9 +325,30 @@ export class PetsService {
             photo: pet.photo, // Mantener el valor original (puede ser null)
             images: transformedImages,
             mainImageUrl: mainImage ? mainImage.url : null,
-            photoUrl: pet.photo ? `/uploads/${pet.photo.replace('uploads/', '')}` : null
+            photoUrl: pet.photo ? `/uploads/${pet.photo.replace('uploads/', '')}` : null,
+            consentDocumentUrl: pet.consent_document ? `/uploads/consents/${pet.consent_document.replace('uploads/consents/', '')}` : null
         };
         
         return responseDto;
+    }
+
+    // Método para calcular la edad de la mascota basada en su fecha de nacimiento
+    private calculateAge(pet: Pet): void {
+        if (!pet.birth_date) return;
+        
+        const today = new Date();
+        const birthDate = new Date(pet.birth_date);
+        
+        // Calcular la diferencia en meses
+        let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+        months -= birthDate.getMonth();
+        months += today.getMonth();
+        
+        // Ajustar por días si es necesario
+        if (today.getDate() < birthDate.getDate()) {
+            months--;
+        }
+        
+        pet.age = months > 0 ? months : 0;
     }
 }
