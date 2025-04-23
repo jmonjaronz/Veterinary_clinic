@@ -6,7 +6,6 @@ import { PetsService } from './pets.service';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
 import { PetFilterDto } from './dto/pet-filter.dto';
-import { UploadConsentDocumentDto } from './dto/upload-consent-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PetResponseDto } from './dto/pet-response.dto';
 
@@ -17,21 +16,17 @@ export class PetsController {
 
     @UseGuards(JwtAuthGuard)
     @Post()
-    async create(@Body() createPetDto: CreatePetDto): Promise<PetResponseDto> {
+    create(@Body() createPetDto: CreatePetDto): Promise<PetResponseDto> {
         return this.petsService.create(createPetDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    async findAll(
+    findAll(
         @Query() filterDto: PetFilterDto,
         @Query('owner_id') ownerId?: string,
         @Query('species_id') speciesId?: string
-    ): Promise<{
-        data: PetResponseDto[];
-        meta: any;
-        links: any;
-    }> {
+    ) {
         // Si se proporcionan filtros específicos de propietario o especie
         if (ownerId) {
             return this.petsService.findByOwner(+ownerId, filterDto);
@@ -47,13 +42,13 @@ export class PetsController {
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
-    async findOne(@Param('id') id: string): Promise<PetResponseDto> {
+    findOne(@Param('id') id: string): Promise<PetResponseDto> {
         return this.petsService.findOne(+id);
     }
 
     @UseGuards(JwtAuthGuard)
     @Patch(':id')
-    async update(
+    update(
         @Param('id') id: string, 
         @Body() updatePetDto: UpdatePetDto
     ): Promise<PetResponseDto> {
@@ -96,7 +91,7 @@ export class PetsController {
             },
         }),
     )
-    async uploadConsentDocument(
+    uploadConsentDocument(
         @Param('id') id: string,
         @UploadedFile() file: Express.Multer.File,
     ): Promise<PetResponseDto> {
