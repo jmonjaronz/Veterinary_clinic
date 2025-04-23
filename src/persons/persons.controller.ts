@@ -21,7 +21,9 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Post('create-from-dni')
-    async createFromDni(@Body() body: { dni: string }) {
+    async createFromDni(@Body() body: { dni: string, role?: string }) {
+        const role = body.role || 'cliente';
+        
         // Verificar si la persona ya existe en la base de datos
         const existingPersons = await this.personsService.findAll({
             dni: body.dni,
@@ -38,17 +40,16 @@ export class PersonsController {
         }
         
         // Buscar la persona por DNI en la API externa
-        const personData = await this.dniSearchService.searchByDni(body.dni);
+        const personData = await this.dniSearchService.searchByDni(body.dni, role);
         
         // Crear un DTO de persona a partir de los datos obtenidos
         const createPersonDto: CreatePersonDto = {
-            full_name: `${personData.nombre} ${personData.apellido || ''}`.trim(),
+            full_name: personData.full_name,
             dni: body.dni,
-            // Otros campos que podrías querer establecer
             email: personData.email || '',
-            phone_number: personData.telefono || '',
-            address: personData.direccion || '',
-            role: 'cliente' // Por defecto, será un cliente
+            phone_number: personData.phone_number || '',
+            address: personData.address || '',
+            role: role // Usar el rol proporcionado o 'cliente' por defecto
         };
         
         // Crear la persona en la base de datos
@@ -59,6 +60,51 @@ export class PersonsController {
             message: 'Persona creada exitosamente',
             person: newPerson
         };
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('create-veterinarian-from-dni')
+    async createVeterinarianFromDni(@Body() body: { dni: string }) {
+        // Utilizamos el mismo endpoint pero establecemos el rol como 'staff'
+        return this.createFromDni({ dni: body.dni, role: 'staff' });
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('find-by-dni/:dni')
+    async findByDni(@Param('dni') dni: string) {
+        // Buscar primero en nuestra base de datos
+        const existingPersons = await this.personsService.findAll({
+            dni: dni,
+            page: 1,
+            per_page: 1
+        });
+        
+        if (existingPersons.data.length > 0) {
+            return {
+                source: 'database',
+                person: existingPersons.data[0]
+            };
+        }
+        
+        // Si no existe en la base de datos, buscar en la API externa
+        try {
+            const personData = await this.dniSearchService.searchByDni(dni);
+            return {
+                source: 'api',
+                person: {
+                    full_name: personData.full_name,
+                    dni: dni,
+                    email: personData.email,
+                    phone_number: personData.phone_number,
+                    address: personData.address
+                }
+            };
+        } catch (error) {
+            return {
+                source: 'none',
+                message: 'No se encontró información para este DNI'
+            };
+        }
     }
 
     @UseGuards(JwtAuthGuard)
