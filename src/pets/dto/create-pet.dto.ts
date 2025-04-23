@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, Min, IsPositive } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, Min, IsPositive, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreatePetDto {
     @IsNotEmpty({ message: 'El nombre de la mascota es requerido' })
@@ -17,6 +18,11 @@ export class CreatePetDto {
     @IsNumber({}, { message: 'La edad debe ser un número' })
     @Min(0, { message: 'La edad no puede ser negativa' })
     age?: number;
+
+    @IsOptional()
+    @Type(() => Date)
+    @IsDate({ message: 'La fecha de nacimiento debe ser una fecha válida' })
+    birth_date?: Date;
 
     @IsOptional()
     @IsNumber({}, { message: 'El peso debe ser un número' })
@@ -38,4 +44,8 @@ export class CreatePetDto {
     @IsOptional()
     @IsString({ message: 'La URL de la foto debe ser una cadena de texto' })
     photo?: string;
+
+    @IsOptional()
+    @IsString({ message: 'El documento de consentimiento debe ser una cadena de texto' })
+    consent_document?: string;
 }
