@@ -23,13 +23,20 @@ async function bootstrap() {
   // Prefijo global para todas las rutas
   app.setGlobalPrefix('api/v1');
   
-  // Asegurarse de que el directorio de uploads existe
-  const uploadDir = join(__dirname, '..', 'uploads/pets');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  // Asegurarse de que los directorios de uploads existen
+  const uploadDirs = [
+    join(__dirname, '..', 'uploads/pets'),
+    join(__dirname, '..', 'uploads/consents')
+  ];
   
-  // Configurar archivos estáticos para servir las imágenes
+  // Crear cada directorio si no existe
+  uploadDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+  
+  // Configurar archivos estáticos para servir las imágenes y documentos
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
   });
