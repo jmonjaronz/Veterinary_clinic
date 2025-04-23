@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsNumber, Min, IsPositive } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, IsPositive, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CreatePetDto } from './create-pet.dto';
 
 export class UpdatePetDto implements Partial<CreatePetDto> {
@@ -20,6 +21,11 @@ export class UpdatePetDto implements Partial<CreatePetDto> {
     age?: number;
 
     @IsOptional()
+    @Type(() => Date)
+    @IsDate({ message: 'La fecha de nacimiento debe ser una fecha válida' })
+    birth_date?: Date;
+
+    @IsOptional()
     @IsNumber({}, { message: 'El peso debe ser un número' })
     @IsPositive({ message: 'El peso debe ser un valor positivo' })
     weight?: number;
@@ -39,4 +45,8 @@ export class UpdatePetDto implements Partial<CreatePetDto> {
     @IsOptional()
     @IsString({ message: 'La URL de la foto debe ser una cadena de texto' })
     photo?: string;
+
+    @IsOptional()
+    @IsString({ message: 'El documento de consentimiento debe ser una cadena de texto' })
+    consent_document?: string;
 }

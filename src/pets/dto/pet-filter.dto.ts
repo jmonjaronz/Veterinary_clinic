@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsNumber, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PetFilterDto {
@@ -43,6 +43,16 @@ export class PetFilterDto {
     age_max?: number;
 
     @IsOptional()
+    @Type(() => Date)
+    @IsDate()
+    birth_date_start?: Date;
+
+    @IsOptional()
+    @Type(() => Date)
+    @IsDate()
+    birth_date_end?: Date;
+
+    @IsOptional()
     @Type(() => Number)
     @IsNumber()
     weight_min?: number;
@@ -61,4 +71,9 @@ export class PetFilterDto {
     @IsOptional()
     @IsString()
     species_name?: string;
+
+    // Filtro para documento de consentimiento
+    @IsOptional()
+    @IsString()
+    has_consent_document?: 'yes' | 'no';
 }
