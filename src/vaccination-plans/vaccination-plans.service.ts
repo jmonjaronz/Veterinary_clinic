@@ -11,6 +11,7 @@ import { UpdateVaccinationPlanDto } from './dto/update-vaccination-plan.dto';
 import { VaccinationPlanFilterDto } from './dto/vaccination-plan-filter.dto';
 import { CreateVaccinationRecordDto } from './dto/create-vaccination-record.dto';
 import { UpdateVaccinationRecordDto } from './dto/update-vaccination-record.dto';
+import { VaccinationRecordFilterDto } from './dto/vaccination-record-filter.dto';
 
 @Injectable()
 export class VaccinationPlansService {
@@ -424,6 +425,111 @@ export class VaccinationPlansService {
     }
 
     // Métodos para gestionar los registros de vacunación manteniendo compatibilidad
+    async findVaccinationRecords(filterDto?: VaccinationRecordFilterDto) {
+        // Usar un objeto por defecto si filterDto es undefined
+        const filters = filterDto || new VaccinationRecordFilterDto();
+        
+        // Crear QueryBuilder para consultas avanzadas
+        const queryBuilder = this.vaccinationRecordRepository
+            .createQueryBuilder('record')
+            .leftJoinAndSelect('record.vaccination_plan', 'plan')
+            .leftJoinAndSelect('record.vaccine', 'vaccine')
+            .leftJoinAndSelect('plan.pet', 'pet');
+            
+        // Aplicar filtros
+        if (filters.vaccination_plan_id) {
+            queryBuilder.andWhere('record.vaccination_plan_id = :planId', { 
+                planId: filters.vaccination_plan_id 
+            });
+        }
+        
+        if (filters.vaccine_id) {
+            queryBuilder.andWhere('record.vaccine_id = :vaccineId', { 
+                vaccineId: filters.vaccine_id 
+            });
+        }
+        
+        if (filters.status) {
+            queryBuilder.andWhere('record.status = :status', { status: filters.status });
+        }
+        
+        if (filters.enabled !== undefined) {
+            queryBuilder.andWhere('record.enabled = :enabled', { enabled: filters.enabled });
+        }
+        
+        if (filters.plan_vaccine_id) {
+            queryBuilder.andWhere('record.plan_vaccine_id = :planVaccineId', { 
+                planVaccineId: filters.plan_vaccine_id 
+            });
+        }
+        
+        // Filtros de fechas
+        if (filters.scheduled_date_start && filters.scheduled_date_end) {
+            queryBuilder.andWhere('record.scheduled_date BETWEEN :start AND :end', {
+                start: filters.scheduled_date_start,
+                end: filters.scheduled_date_end
+            });
+        } else if (filters.scheduled_date_start) {
+            queryBuilder.andWhere('record.scheduled_date >= :start', { start: filters.scheduled_date_start });
+        } else if (filters.scheduled_date_end) {
+            queryBuilder.andWhere('record.scheduled_date <= :end', { end: filters.scheduled_date_end });
+        }
+        
+        if (filters.administered_date_start && filters.administered_date_end) {
+            queryBuilder.andWhere('record.administered_date BETWEEN :admStart AND :admEnd', {
+                admStart: filters.administered_date_start,
+                admEnd: filters.administered_date_end
+            });
+        } else if (filters.administered_date_start) {
+            queryBuilder.andWhere('record.administered_date >= :admStart', { admStart: filters.administered_date_start });
+        } else if (filters.administered_date_end) {
+            queryBuilder.andWhere('record.administered_date <= :admEnd', { admEnd: filters.administered_date_end });
+        }
+        
+        // Búsqueda por nombre de vacuna
+        if (filters.vaccine_name) {
+            queryBuilder.andWhere('vaccine.name LIKE :vacName', { vacName: `%${filters.vaccine_name}%` });
+        }
+        
+        // Búsqueda por contenido de notas
+        if (filters.notes_contains) {
+            queryBuilder.andWhere('record.notes LIKE :notes', { notes: `%${filters.notes_contains}%` });
+        }
+        
+        // Calcular skip para paginación
+        const skip = (filters.page - 1) * filters.per_page;
+        
+        // Aplicar paginación y ordenamiento
+        queryBuilder
+            .orderBy('record.scheduled_date', 'ASC')
+            .skip(skip)
+            .take(filters.per_page);
+        
+        // Ejecutar la consulta
+        const [data, total] = await queryBuilder.getManyAndCount();
+        
+        // Calcular metadatos de paginación
+        const lastPage = Math.ceil(total / filters.per_page);
+        
+        return {
+            data,
+            meta: {
+                total,
+                per_page: filters.per_page,
+                current_page: filters.page,
+                last_page: lastPage,
+                from: skip + 1,
+                to: skip + data.length,
+            },
+            links: {
+                first: `?page=1&per_page=${filters.per_page}`,
+                last: `?page=${lastPage}&per_page=${filters.per_page}`,
+                prev: filters.page > 1 ? `?page=${filters.page - 1}&per_page=${filters.per_page}` : null,
+                next: filters.page < lastPage ? `?page=${filters.page + 1}&per_page=${filters.per_page}` : null,
+            }
+        };
+    }
+
     async addVaccinationRecord(createVaccinationRecordDto: CreateVaccinationRecordDto): Promise<VaccinationRecord> {
         const { vaccination_plan_id, vaccine_id, scheduled_date, status } = createVaccinationRecordDto;
 

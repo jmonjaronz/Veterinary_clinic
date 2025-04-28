@@ -1,12 +1,19 @@
-import { Controller, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards, Query } from '@nestjs/common';
 import { VaccinationPlansService } from './vaccination-plans.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateVaccinationRecordDto } from './dto/create-vaccination-record.dto';
 import { UpdateVaccinationRecordDto } from './dto/update-vaccination-record.dto';
+import { VaccinationRecordFilterDto } from './dto/vaccination-record-filter.dto';
 
 @Controller('vaccination-records')
 export class VaccinationRecordsController {
     constructor(private readonly vaccinationPlansService: VaccinationPlansService) {}
+
+    @UseGuards(JwtAuthGuard)
+    @Get()
+    findAll(@Query() filterDto: VaccinationRecordFilterDto) {
+        return this.vaccinationPlansService.findVaccinationRecords(filterDto);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Post()
