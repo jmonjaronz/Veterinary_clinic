@@ -41,8 +41,18 @@ export class PetsService {
             throw new BadRequestException(`Especie con ID ${createPetDto.species_id} no encontrada`);
         }
     
+        // Validar el sexo si está presente
+        if (createPetDto.sex && !['macho', 'hembra'].includes(createPetDto.sex.toLowerCase())) {
+            throw new BadRequestException(`El sexo debe ser "macho" o "hembra"`);
+        }
+
         // Crear la mascota
         const pet = this.petRepository.create(createPetDto);
+        
+        // Normalizar el sexo a minúsculas si existe
+        if (pet.sex) {
+            pet.sex = pet.sex.toLowerCase();
+        }
         
         // Actualizar la edad automáticamente si hay fecha de nacimiento
         if (pet.birth_date) {
@@ -82,6 +92,11 @@ export class PetsService {
 
         if (filters.breed) {
             queryBuilder.andWhere('pet.breed LIKE :breed', { breed: `%${filters.breed}%` });
+        }
+
+        // Filtro por sexo
+        if (filters.sex) {
+            queryBuilder.andWhere('LOWER(pet.sex) = LOWER(:sex)', { sex: filters.sex });
         }
 
         // Filtros de rango para edad
@@ -236,6 +251,16 @@ export class PetsService {
             if (!species) {
                 throw new BadRequestException(`Especie con ID ${updatePetDto.species_id} no encontrada`);
             }
+        }
+
+        // Validar el sexo si está presente
+        if (updatePetDto.sex && !['macho', 'hembra'].includes(updatePetDto.sex.toLowerCase())) {
+            throw new BadRequestException(`El sexo debe ser "macho" o "hembra"`);
+        }
+
+        // Normalizar el sexo a minúsculas si existe
+        if (updatePetDto.sex) {
+            updatePetDto.sex = updatePetDto.sex.toLowerCase();
         }
 
         // Si se actualiza la fecha de nacimiento, actualizar automáticamente la edad
