@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, Min, IsPositive, IsDate } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, Min, IsPositive, IsDate, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePetDto {
@@ -18,6 +18,12 @@ export class CreatePetDto {
     @IsNumber({}, { message: 'La edad debe ser un número' })
     @Min(0, { message: 'La edad no puede ser negativa' })
     age?: number;
+
+    // Nuevo campo de sexo
+    @IsOptional()
+    @IsString({ message: 'El sexo debe ser una cadena de texto' })
+    @IsIn(['macho', 'hembra'], { message: 'El sexo debe ser "macho" o "hembra"' })
+    sex?: string;
 
     @IsOptional()
     @Type(() => Date)

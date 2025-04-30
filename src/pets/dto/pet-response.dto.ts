@@ -13,6 +13,7 @@ export class PetResponseDto {
   species: Species;
   breed: string;
   age: number;
+  sex: string | null;  // Campo añadido
   birth_date: Date;
   weight: number;
   temperature: number;

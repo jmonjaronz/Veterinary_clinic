@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, IsNumber, IsDate } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsNumber, IsDate, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PetFilterDto {
@@ -61,6 +61,12 @@ export class PetFilterDto {
     @Type(() => Number)
     @IsNumber()
     weight_max?: number;
+
+    // Nuevo campo para filtrar por sexo
+    @IsOptional()
+    @IsString()
+    @IsIn(['macho', 'hembra'], { message: 'El sexo debe ser "macho" o "hembra"' })
+    sex?: string;
 
     // Filtros para los datos de propietario relacionado
     @IsOptional()
