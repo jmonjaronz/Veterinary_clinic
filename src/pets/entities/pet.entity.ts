@@ -24,6 +24,10 @@ export class Pet {
     @Column({ nullable: true })
     age: number;
 
+    // Nuevo campo de sexo
+    @Column({ nullable: true })
+    sex: string; // 'macho' o 'hembra'
+
     @Column({ type: 'date', nullable: true })
     birth_date: Date;
 
