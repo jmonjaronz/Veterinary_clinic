@@ -35,8 +35,13 @@ export class SurgicalConsentFilterDto {
     veterinarian_id?: number;
 
     @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    procedure_type_id?: number;
+
+    @IsOptional()
     @IsString()
-    procedure_type?: string;
+    custom_procedure_type?: string;
 
     @IsOptional()
     @IsString()

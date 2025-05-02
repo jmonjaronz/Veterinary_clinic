@@ -676,14 +676,14 @@ export class SurgicalConsentsService {
         const procedureTypeName = consent.procedureType 
             ? consent.procedureType.name
             : consent.custom_procedure_type;
-
+    
         // Crear una copia para evitar modificar la entidad original
         const responseDto: SurgicalConsentResponseDto = {
             ...consent,
             signedDocumentUrl: consent.signed_document 
                 ? `/uploads/consents/${consent.signed_document.replace('uploads/consents/', '')}`
                 : null,
-            effectiveProcedureType: procedureTypeName
+            procedureTypeName: procedureTypeName
         };
         
         return responseDto;
