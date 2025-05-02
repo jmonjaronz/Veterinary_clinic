@@ -14,6 +14,7 @@ import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { HospitalizationsModule } from './hospitalizations/hospitalizations.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TreatmentsModule } from './treatments/treatments.module';
+import { SurgicalConsentsModule } from './surgical-consents/surgical-consents.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { TreatmentsModule } from './treatments/treatments.module';
     HospitalizationsModule,
     NotificationsModule,
     VaccinesModule,
-    TreatmentsModule
+    TreatmentsModule,
+    SurgicalConsentsModule
   ],
   controllers: [],
   providers: [],
