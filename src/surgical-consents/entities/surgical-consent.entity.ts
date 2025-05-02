@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
+import { ProcedureType } from './procedure-type.entity';
 
 @Entity({ name: 'surgical_consents' })
 export class SurgicalConsent {
@@ -36,8 +37,15 @@ export class SurgicalConsent {
     @JoinColumn({ name: 'veterinarian_id' })
     veterinarian: Person;
 
-    @Column()
-    procedure_type: string;
+    @Column({ nullable: true })
+    procedure_type_id: number;
+
+    @ManyToOne(() => ProcedureType)
+    @JoinColumn({ name: 'procedure_type_id' })
+    procedureType: ProcedureType;
+    
+    @Column({ nullable: true })
+    custom_procedure_type: string;
 
     @Column({ type: 'text', nullable: true })
     comments: string;
