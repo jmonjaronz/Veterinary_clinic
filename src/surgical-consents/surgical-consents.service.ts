@@ -1,4 +1,3 @@
-// src/surgical-consents/surgical-consents.service.ts
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
@@ -89,7 +88,7 @@ export class SurgicalConsentsService {
         }
 
         // 6. Validar el tipo de procedimiento o el procedimiento personalizado
-        let procedureType = null;
+        let procedureType: ProcedureType | null = null;
         if (procedure_type_id) {
             procedureType = await this.procedureTypeRepository.findOne({ 
                 where: { id: procedure_type_id } 
@@ -165,8 +164,8 @@ export class SurgicalConsentsService {
             queryBuilder.andWhere('consent.veterinarian_id = :vetId', { vetId: filters.veterinarian_id });
         }
 
-        if (filters.procedure_type) {
-            queryBuilder.andWhere('consent.procedure_type_id = :procedureTypeId', { procedureTypeId: filters.procedure_type });
+        if (filters.procedure_type_id) {
+            queryBuilder.andWhere('consent.procedure_type_id = :procedureTypeId', { procedureTypeId: filters.procedure_type_id });
         }
 
         if (filters.status) {
@@ -443,24 +442,20 @@ export class SurgicalConsentsService {
         }
 
         // 5. Validar tipo de procedimiento si se intenta cambiar
-        if (updateSurgicalConsentDto.procedure_type && 
-            updateSurgicalConsentDto.procedure_type !== consent.procedure_type_id) {
+        if (updateSurgicalConsentDto.procedure_type_id && 
+            updateSurgicalConsentDto.procedure_type_id !== consent.procedure_type_id) {
             const procedureType = await this.procedureTypeRepository.findOne({ 
-                where: { id: updateSurgicalConsentDto.procedure_type } 
+                where: { id: Number(updateSurgicalConsentDto.procedure_type_id) }
             });
             
             if (!procedureType) {
-                throw new NotFoundException(`Tipo de procedimiento con ID ${updateSurgicalConsentDto.procedure_type} no encontrado`);
+                throw new NotFoundException(`Tipo de procedimiento con ID ${updateSurgicalConsentDto.procedure_type_id} no encontrado`);
             }
-
+        
             // Verificar que el procedimiento esté activo
             if (!procedureType.is_active) {
-                throw new BadRequestException(`El tipo de procedimiento con ID ${updateSurgicalConsentDto.procedure_type} no está activo`);
+                throw new BadRequestException(`El tipo de procedimiento con ID ${updateSurgicalConsentDto.procedure_type_id} no está activo`);
             }
-            
-            // Asignamos el ID correctamente
-            updateSurgicalConsentDto.procedure_type_id = updateSurgicalConsentDto.procedure_type;
-            delete updateSurgicalConsentDto.procedure_type;
         }
 
         // 6. Validar fecha programada si se intenta cambiar

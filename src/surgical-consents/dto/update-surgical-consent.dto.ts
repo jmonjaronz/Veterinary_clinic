@@ -19,8 +19,8 @@ export class UpdateSurgicalConsentDto {
     veterinarian_id?: number;
 
     @IsOptional()
-    @IsString({ message: 'El tipo de procedimiento debe ser una cadena de texto' })
-    procedure_type?: string;
+    @IsNumber({}, { message: 'El ID del tipo de procedimiento debe ser un número' })
+    procedure_type_id?: number;
 
     @IsOptional()
     @IsString({ message: 'Los comentarios deben ser una cadena de texto' })
