@@ -106,7 +106,7 @@ export class SurgicalConsentsController {
     cancel(@Param('id') id: string) {
         return this.surgicalConsentsService.cancel(+id);
     }
-  
+
     @UseGuards(JwtAuthGuard)
     @Post(':id/upload-signed')
     @UseInterceptors(
