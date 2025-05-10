@@ -6,11 +6,6 @@ import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-interface CreateFromDniDto {
-    dni: string;
-    role?: string;
-}
-
 @Controller('persons')
 export class PersonsController {
     constructor(
@@ -24,14 +19,19 @@ export class PersonsController {
         return this.personsService.create(createPersonDto);
     }
 
+    // NUEVO: Endpoint unificado para búsqueda e inserción por DNI
     @UseGuards(JwtAuthGuard)
-    @Post('create-from-dni')
-    async createFromDni(@Body() body: CreateFromDniDto) {
-        const role = body.role || 'cliente';
+    @Get('search-dni/:dni')
+    async searchAndCreatePersonByDni(
+        @Param('dni') dni: string, 
+        @Query('role') role?: string,
+        @Query('create') create?: string // Query param para determinar si crear o solo buscar
+    ) {
+        const finalRole = role || 'cliente';
         
-        // Verificar si la persona ya existe en la base de datos
+        // Buscar primero en nuestra base de datos
         const existingPersons = await this.personsService.findAll({
-            dni: body.dni,
+            dni: dni,
             page: 1,
             per_page: 1
         });
@@ -40,46 +40,71 @@ export class PersonsController {
             return {
                 status: 2,
                 message: 'La persona ya existe en el sistema',
-                person: existingPersons.data[0]
+                person: existingPersons.data[0],
+                source: 'database'
             };
         }
         
-        // Buscar la persona por DNI en la API externa
-        const personData = await this.dniSearchService.searchByDni(body.dni);
-        
-        // Crear un DTO de persona a partir de los datos obtenidos
-        const createPersonDto: CreatePersonDto = {
-            full_name: personData.full_name,
-            dni: body.dni,
-            email: personData.email || '',
-            phone_number: personData.phone_number || '',
-            address: personData.address || '',
-            role: role // Usar el rol proporcionado o 'cliente' por defecto
-        };
-        
-        // Crear la persona en la base de datos
-        const newPerson = await this.personsService.create(createPersonDto);
-        
-        return {
-            status: 1,
-            message: 'Persona creada exitosamente',
-            person: newPerson
-        };
+        // Buscar en la API externa
+        try {
+            const personData = await this.dniSearchService.searchByDni(dni);
+            
+            // Si create=true, crear la persona en la base de datos
+            if (create === 'true') {
+                const createPersonDto: CreatePersonDto = {
+                    full_name: personData.full_name,
+                    dni: dni,
+                    email: personData.email || '',
+                    phone_number: personData.phone_number || '',
+                    address: personData.address || '',
+                    role: finalRole
+                };
+                
+                const newPerson = await this.personsService.create(createPersonDto);
+                
+                return {
+                    status: 1,
+                    message: 'Persona creada exitosamente',
+                    person: newPerson,
+                    source: 'api'
+                };
+            } else {
+                // Solo devolver los datos encontrados
+                return {
+                    status: 0,
+                    message: 'Persona encontrada pero no creada',
+                    person: {
+                        full_name: personData.full_name,
+                        dni: dni,
+                        email: personData.email || '',
+                        phone_number: personData.phone_number || '',
+                        address: personData.address || '',
+                        role: finalRole
+                    },
+                    source: 'api'
+                };
+            }
+        } catch {
+            return {
+                status: -1,
+                message: 'No se encontró información para este DNI',
+                source: 'none',
+                dni: dni
+            };
+        }
     }
 
+    // Alias para buscar veterinarios
     @UseGuards(JwtAuthGuard)
-    @Post('create-veterinarian-from-dni')
-    async createVeterinarianFromDni(@Body() body: { dni: string }) {
-        // Crear objeto compatible con la interfaz
-        const data: CreateFromDniDto = {
-            dni: body.dni,
-            role: 'staff'
-        };
-        
-        // Utilizar el método existente
-        return this.createFromDni(data);
+    @Get('search-staff/:dni')
+    async searchStaffByDni(
+        @Param('dni') dni: string,
+        @Query('create') create?: string
+    ) {
+        return this.searchAndCreatePersonByDni(dni, 'staff', create);
     }
 
+    // Endpoint más simple para búsqueda sin crear
     @UseGuards(JwtAuthGuard)
     @Get('find-by-dni/:dni')
     async findByDni(@Param('dni') dni: string) {
@@ -133,17 +158,16 @@ export class PersonsController {
                 // Mostrar todos los campos del objeto original
                 availableFields: Object.keys(personData.originalData || {}),
                 fieldValues: personData.originalData,
-                // Extra: mostrar específicamente los campos de nombre
+                // Extra: mostrar específicamente los campos de nombre actualizados
                 nameFields: {
+                    nombres: personData.originalData?.nombres || null,
+                    apepat: personData.originalData?.apepat || null,
+                    apemat: personData.originalData?.apemat || null,
+                    full_name_constructed: personData.full_name, // Ver el nombre completo generado
+                    // Backup fields
                     nombre: personData.originalData?.nombre || null,
                     apellido: personData.originalData?.apellido || null,
-                    Nombre: personData.originalData?.Nombre || null,
-                    Apellido: personData.originalData?.Apellido || null,
-                    full_name: personData.originalData?.full_name || null,
-                    name: personData.originalData?.name || null,
                     razon_social: personData.originalData?.razon_social || null,
-                    NombreCompleto: personData.originalData?.NombreCompleto || null,
-                    nombre_completo: personData.originalData?.nombre_completo || null,
                 }
             };
         } catch (error) {

@@ -5,20 +5,22 @@ import { AxiosResponse } from 'axios';
 
 // Interfaz para la respuesta de la API
 export interface PersonDataFromApi {
-    // Campos posibles de la API basados en múltiples fuentes
+    // Campos específicos que devuelve la API según los datos mostrados
+    code?: number;
+    dni?: string;
+    apepat?: string;  // Apellido Paterno
+    apemat?: string;  // Apellido Materno
+    nombres?: string; // Nombres
+    apcase?: string;
+    fecnac?: string;
+    ubigeo?: string;
+    // Campos posibles de la API basados en múltiples fuentes (backup)
     nombre?: string;
     apellido?: string;
     full_name?: string;
     name?: string;
     razon_social?: string;
-    nombres?: string;
     apellidos?: string;
-    // Posibles variaciones adicionales
-    Nombre?: string;
-    Apellido?: string;
-    RazonSocial?: string;
-    NombreCompleto?: string;
-    nombre_completo?: string;
     // Campos para dirección
     direccion?: string;
     address?: string;
@@ -35,8 +37,6 @@ export interface PersonDataFromApi {
     correo?: string;
     Email?: string;
     Correo?: string;
-    // Posibles campos adicionales de la API
-    [key: string]: any; // Para manejar campos no previstos
 }
 
 // Interfaz para la respuesta procesada
@@ -59,35 +59,45 @@ export class DniSearchService {
     private extractFullName(data: PersonDataFromApi): string {
         // LOG: Ver todos los valores posibles para el nombre
         console.log('Intentando extraer nombre de:', {
+            nombres: data.nombres,
+            apepat: data.apepat,
+            apemat: data.apemat,
+            // Otros campos como backup
             nombre: data.nombre,
             apellido: data.apellido,
-            Nombre: data.Nombre,
-            Apellido: data.Apellido,
             full_name: data.full_name,
-            name: data.name,
-            NombreCompleto: data.NombreCompleto,
-            nombre_completo: data.nombre_completo,
             razon_social: data.razon_social,
-            RazonSocial: data.RazonSocial,
-            nombres: data.nombres,
-            apellidos: data.apellidos,
         });
         
-        // Intentar diferentes combinaciones de campos para el nombre
-        // Variación con minúsculas
+        // PATRÓN PRINCIPAL: nombres + apepat + apemat
+        if (data.nombres) {
+            let fullName = data.nombres;
+            if (data.apepat) {
+                fullName += ` ${data.apepat}`;
+            }
+            if (data.apemat) {
+                fullName += ` ${data.apemat}`;
+            }
+            return fullName.trim();
+        }
+        
+        // Si no hay nombres, intentar con apepat + apemat solamente
+        if (data.apepat || data.apemat) {
+            let fullName = '';
+            if (data.apepat) {
+                fullName = data.apepat;
+            }
+            if (data.apemat) {
+                fullName += (fullName ? ` ${data.apemat}` : data.apemat);
+            }
+            return fullName.trim();
+        }
+        
+        // Fallback a patrones antiguos
         if (data.nombre) {
             let fullName = data.nombre;
             if (data.apellido) {
                 fullName += ` ${data.apellido}`;
-            }
-            return fullName;
-        }
-        
-        // Variación con mayúsculas
-        if (data.Nombre) {
-            let fullName = data.Nombre;
-            if (data.Apellido) {
-                fullName += ` ${data.Apellido}`;
             }
             return fullName;
         }
@@ -97,30 +107,9 @@ export class DniSearchService {
             return data.full_name;
         }
         
-        if (data.NombreCompleto) {
-            return data.NombreCompleto;
-        }
-        
-        if (data.nombre_completo) {
-            return data.nombre_completo;
-        }
-        
-        if (data.name) {
-            return data.name;
-        }
-        
         // Para instituciones
         if (data.razon_social) {
             return data.razon_social;
-        }
-        
-        if (data.RazonSocial) {
-            return data.RazonSocial;
-        }
-        
-        // Campos separados
-        if (data.nombres && data.apellidos) {
-            return `${data.nombres} ${data.apellidos}`;
         }
         
         // LOG: No se encontró nombre
@@ -199,8 +188,11 @@ export class DniSearchService {
      */
     async searchByDni(dni: string): Promise<PersonData> {
         try {
+            console.log(`=== INICIO: Búsqueda por DNI ${dni} ===`);
+            
             // Construir la URL con los parámetros correctos
             const url = `http://facturae-garzasoft.com/facturacion/buscaCliente/BuscaCliente2.php?dni=${dni}&fe=N&token=qusEj_w7aHEpX`;
+            console.log('URL a consultar:', url);
             
             // Hacer la llamada a la API
             const response: AxiosResponse = await lastValueFrom(
