@@ -118,6 +118,55 @@ export class PersonsController {
         }
     }
 
+    // Endpoint temporal para debug
+    @UseGuards(JwtAuthGuard)
+    @Get('debug-search-raw/:dni')
+    async debugSearchRaw(@Param('dni') dni: string) {
+        try {
+            // Obtener los datos procesados pero mostrar también los originales
+            const personData = await this.dniSearchService.searchByDni(dni);
+            
+            return {
+                dni: dni,
+                processedData: personData,
+                originalApiData: personData.originalData,
+                // Mostrar todos los campos del objeto original
+                availableFields: Object.keys(personData.originalData || {}),
+                fieldValues: personData.originalData,
+                // Extra: mostrar específicamente los campos de nombre
+                nameFields: {
+                    nombre: personData.originalData?.nombre || null,
+                    apellido: personData.originalData?.apellido || null,
+                    Nombre: personData.originalData?.Nombre || null,
+                    Apellido: personData.originalData?.Apellido || null,
+                    full_name: personData.originalData?.full_name || null,
+                    name: personData.originalData?.name || null,
+                    razon_social: personData.originalData?.razon_social || null,
+                    NombreCompleto: personData.originalData?.NombreCompleto || null,
+                    nombre_completo: personData.originalData?.nombre_completo || null,
+                }
+            };
+        } catch (error) {
+            // Manejo de errores más robusto para evitar warnings de ESLint
+            if (error instanceof Error) {
+                return {
+                    error: true,
+                    message: error.message,
+                    dni: dni,
+                    errorStack: error.stack
+                };
+            }
+            
+            // Manejo para errores no estándar
+            return {
+                error: true,
+                message: String(error),
+                dni: dni,
+                errorStack: undefined
+            };
+        }
+    }
+
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(@Query() filterDto: PersonFilterDto) {
