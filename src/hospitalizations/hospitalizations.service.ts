@@ -20,7 +20,7 @@ export class HospitalizationsService {
     ) {}
 
     async create(createHospitalizationDto: CreateHospitalizationDto): Promise<Hospitalization> {
-        const { pet_id, veterinarian_id, reason, consent_document, admission_date } = createHospitalizationDto;
+        const { pet_id, veterinarian_id, reason, description, admission_date } = createHospitalizationDto;
 
         // Verificar si la mascota existe
         const pet = await this.petRepository.findOne({ where: { id: pet_id } });
@@ -65,7 +65,7 @@ export class HospitalizationsService {
             pet_id,
             veterinarian_id,
             reason,
-            consent_document,
+            description,
             admission_date,
             discharge_date: createHospitalizationDto.discharge_date,
         });
