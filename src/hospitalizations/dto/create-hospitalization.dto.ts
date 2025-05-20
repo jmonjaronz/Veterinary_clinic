@@ -14,9 +14,9 @@ export class CreateHospitalizationDto {
     @IsString({ message: 'La razón debe ser una cadena de texto' })
     reason: string;
 
-    @IsNotEmpty({ message: 'El documento de consentimiento es requerido' })
-    @IsString({ message: 'El documento de consentimiento debe ser una cadena de texto' })
-    consent_document: string;
+    @IsNotEmpty({ message: 'La descripción es requerida' })
+    @IsString({ message: 'La descripción debe ser una cadena de texto' })
+    description: string;  // Antes era consent_document
 
     @IsNotEmpty({ message: 'La fecha de admisión es requerida' })
     @Type(() => Date)

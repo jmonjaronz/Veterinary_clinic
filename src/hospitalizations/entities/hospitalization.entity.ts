@@ -24,8 +24,9 @@ export class Hospitalization {
     @Column()
     reason: string;
 
+    // Cambio de nombre del campo
     @Column({ type: 'text' })
-    consent_document: string;
+    description: string;  // Antes era consent_document
 
     @Column({ type: 'date' })
     admission_date: Date;

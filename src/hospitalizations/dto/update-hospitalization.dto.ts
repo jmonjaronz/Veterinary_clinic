@@ -15,8 +15,8 @@ export class UpdateHospitalizationDto {
     reason?: string;
 
     @IsOptional()
-    @IsString({ message: 'El documento de consentimiento debe ser una cadena de texto' })
-    consent_document?: string;
+    @IsString({ message: 'La descripción debe ser una cadena de texto' })
+    description?: string;  // Antes era consent_document
 
     @IsOptional()
     @Type(() => Date)
