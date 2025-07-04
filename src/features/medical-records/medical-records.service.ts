@@ -388,7 +388,7 @@ export class MedicalRecordsService {
             .innerJoin('vr.vaccination_plan', 'vp')
             .innerJoin('vp.pet', 'pet')
             .where('pet.id = :petId', { petId })
-            .andWhere('vr.status = :status', { status: 'completado' })
+            .andWhere('vr.vaccine = :status', { status: 'completado' })
             .leftJoinAndSelect('vr.vaccine', 'vaccine')
             .leftJoinAndSelect('vr.vaccination_plan', 'plan')
             .orderBy('vr.administered_date', 'DESC')
