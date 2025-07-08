@@ -25,17 +25,23 @@ export class Treatment {
   @Column({ type: 'timestamp' })
   date: Date;
 
-  @Column({ type: 'text' })
-  reason: string;
+  @Column({ type: 'boolean', default: false })
+  medication: boolean; // "¿Medicación?"
 
   @Column({ type: 'text' })
-  diagnosis: string;
-
-  @Column({ type: 'text' })
-  treatment: string;
+  description: string; // "Descripción"
 
   @Column({ type: 'text', nullable: true })
-  examinations: string;
+  dose: string; // "Dosis"
+
+  @Column({ type: 'text', nullable: true })
+  frequency: string; // "Frecuencia"
+
+  @Column({ type: 'text', nullable: true })
+  duration: string; // "Duración"
+
+  @Column({ type: 'text', nullable: true })
+  observations: string; // "Observaciones"
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;

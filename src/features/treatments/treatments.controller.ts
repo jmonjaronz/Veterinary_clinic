@@ -26,14 +26,7 @@ export class TreatmentsController {
         if (medicalRecordId) {
             return this.treatmentsService.findByMedicalRecord(+medicalRecordId, filterDto);
         }
-        
-        if (petId) {
-            return this.treatmentsService.findByPet(+petId, filterDto);
-        }
-        
-        if (veterinarianId) {
-            return this.treatmentsService.findByVeterinarian(+veterinarianId, filterDto);
-        }
+    
         
         return this.treatmentsService.findAll(filterDto);
     }

@@ -495,7 +495,7 @@ export class MedicalRecordsService {
                     id: `treat_${treatment.id}`,
                     type: 'treatment',
                     date: new Date(treatment.date),
-                    description: `Tratamiento: ${treatment.reason}`,
+                    description: `Tratamiento: ${treatment.description}`,
                     veterinarian: treatment.medical_record?.veterinarian?.full_name
                 });
             }
