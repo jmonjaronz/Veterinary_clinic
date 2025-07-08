@@ -18,9 +18,9 @@ export class CreateMedicalRecordDto {
     @IsString({ message: 'El diagnóstico debe ser una cadena de texto' })
     diagnosis: string;
 
-    @IsNotEmpty({ message: 'El tratamiento es requerido' })
-    @IsString({ message: 'El tratamiento debe ser una cadena de texto' })
-    treatment: string;
+    @IsNotEmpty({ message: 'El tipo es requerido' })
+    @IsString({ message: 'El tipo debe ser una cadena de texto' })
+    type: string;
 
     @IsOptional()
     @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })

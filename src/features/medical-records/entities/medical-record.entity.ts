@@ -43,7 +43,7 @@ export class MedicalRecord {
   diagnosis: string;
 
   @Column({ type: 'text' })
-  treatment: string;
+  type: string;
 
   @Column({ type: 'text', nullable: true })
   prescriptions: string;

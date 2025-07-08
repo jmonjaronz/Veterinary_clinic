@@ -13,41 +13,41 @@ import { MedicalRecord } from '../../medical-records/entities/medical-record.ent
 @Entity({ name: 'treatments' })
 export class Treatment {
   @PrimaryGeneratedColumn()
-  id: number;
+  id?: number;
 
-  @Column()
-  medical_record_id: number;
+  @Column({ nullable: true })
+  medical_record_id?: number;
 
   @ManyToOne(() => MedicalRecord, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'medical_record_id' })
-  medical_record: MedicalRecord;
+  medical_record?: MedicalRecord;
 
-  @Column({ type: 'timestamp' })
-  date: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  date?: Date;
 
-  @Column({ type: 'boolean', default: false })
-  medication: boolean; // "¿Medicación?"
-
-  @Column({ type: 'text' })
-  description: string; // "Descripción"
+  @Column({ type: 'boolean', default: false, nullable: true })
+  medication?: boolean; // "¿Medicación?"
 
   @Column({ type: 'text', nullable: true })
-  dose: string; // "Dosis"
+  description?: string; // "Descripción"
 
   @Column({ type: 'text', nullable: true })
-  frequency: string; // "Frecuencia"
+  dose?: string; // "Dosis"
 
   @Column({ type: 'text', nullable: true })
-  duration: string; // "Duración"
+  frequency?: string; // "Frecuencia"
 
   @Column({ type: 'text', nullable: true })
-  observations: string; // "Observaciones"
+  duration?: string; // "Duración"
 
-  @CreateDateColumn({ name: 'created_at' })
-  created_at: Date | null;
+  @Column({ type: 'text', nullable: true })
+  observations?: string; // "Observaciones"
+
+  @CreateDateColumn({ name: 'created_at', nullable: true })
+  created_at?: Date | null;
 
   @UpdateDateColumn({ name: 'updated_at', nullable: true })
-  updatedAt: Date | null;
+  updatedAt?: Date | null;
 
   @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deletedAt?: Date | null;

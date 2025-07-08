@@ -16,6 +16,9 @@ export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;
 
+ @Column({ nullable: true })
+  correlative: string; // control, emergencia, vacunación
+
   @Column()
   pet_id: number;
 

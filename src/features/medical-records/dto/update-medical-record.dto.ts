@@ -19,8 +19,8 @@ export class UpdateMedicalRecordDto {
     diagnosis?: string;
 
     @IsOptional()
-    @IsString({ message: 'El tratamiento debe ser una cadena de texto' })
-    treatment?: string;
+    @IsString({ message: 'El tipo debe ser una cadena de texto' })
+    type?: string;
 
     @IsOptional()
     @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })
