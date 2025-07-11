@@ -31,6 +31,11 @@ export class MedicalRecordResponseDto {
 
   @Expose() diagnosis: string;
   @Expose() type: string;
+
+  @Expose() care_type: string;
+  @Expose() date_next_application: Date;
+  @Expose() note_next_application: string;
+
   @Expose() name: string;
   @Expose() lote: string;
 

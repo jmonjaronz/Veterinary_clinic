@@ -31,6 +31,22 @@ export class UpdateMedicalRecordDto {
   lote?: string;
 
   @IsOptional()
+  @IsString({
+    message: 'Los tipos de atencion preventiva deben ser una cadena de texto',
+  })
+  care_type?: string;
+
+  @IsOptional()
+  @IsDate({ message: 'La fecha de la cita debe ser una fecha válida' })
+  date_next_application?: Date;
+
+  @IsOptional()
+  @IsString({
+    message: 'La nota de siguiente aplicación deben ser una cadena de texto',
+  })
+  note_next_application?: string;
+
+  @IsOptional()
   @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })
   prescriptions?: string;
 

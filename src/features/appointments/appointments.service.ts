@@ -512,13 +512,14 @@ export class AppointmentsService {
       .where('mr.id IS NULL'); // Solo las que no tienen atención
 
     if (correlative) {
-      query.andWhere('appointment.correlative LIKE :correlative', {
-        correlative: `%${correlative}%`,
+      query.andWhere('UPPER(appointment.correlative) LIKE :correlative', {
+        correlative: `%${correlative.toUpperCase()}%`,
       });
     }
+
     if (type) {
-      query.andWhere('appointment.type LIKE :type', {
-        type: `%${type}%`,
+      query.andWhere('UPPER(appointment.type) LIKE :type', {
+        type: `%${type.toUpperCase()}%`,
       });
     }
 

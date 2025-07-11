@@ -36,7 +36,7 @@ export class Appointment {
   @Column()
   appointment_type: string; // control, emergencia, vacunación
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default:"Normal" })
   type: string ;
 
   @Column({ type: 'timestamp' })

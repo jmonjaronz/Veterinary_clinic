@@ -51,6 +51,14 @@ export class MedicalRecord {
   @Column({ type: 'text', nullable: true })
   lote: string;
 
+  @Column({ type: 'text', nullable: true })
+  care_type: string;
+
+  @Column({ type: 'text', nullable: true })
+  date_next_application: Date;
+
+  @Column({ type: 'text', nullable: true })
+  note_next_application: string;
 
   @Column({ type: 'text', nullable: true })
   prescriptions: string;

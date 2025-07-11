@@ -35,6 +35,10 @@ export class MedicalRecordFilterDto {
 
     @IsOptional()
     @IsString()
+    type?: string;
+
+    @IsOptional()
+    @IsString()
     treatment_contains?: string;
 
     @IsOptional()

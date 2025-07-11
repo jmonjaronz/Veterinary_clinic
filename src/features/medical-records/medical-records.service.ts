@@ -96,11 +96,11 @@ export class MedicalRecordsService {
           where: { appointment_id },
         });
 
-        // if (existing) {
-        //   throw new BadRequestException(
-        //     'La cita ya tiene una atención registrada',
-        //   );
-        // }
+        if (existing) {
+          throw new BadRequestException(
+            'La cita ya tiene una atención registrada',
+          );
+        }
       }
 
       // Si la cita no está completada, completarla automáticamente
@@ -119,6 +119,10 @@ export class MedicalRecordsService {
       type,
       name: createMedicalRecordDto.name,
       lote: createMedicalRecordDto.lote,
+
+      care_type: createMedicalRecordDto.care_type,
+      date_next_application: createMedicalRecordDto.date_next_application,
+      note_next_application: createMedicalRecordDto.note_next_application,
 
       prescriptions: createMedicalRecordDto.prescriptions,
       notes: createMedicalRecordDto.notes,
@@ -166,6 +170,12 @@ export class MedicalRecordsService {
     if (filters.diagnosis_contains) {
       queryBuilder.andWhere('mr.diagnosis LIKE :diagnosis', {
         diagnosis: `%${filters.diagnosis_contains}%`,
+      });
+    }
+
+    if (filters.type) {
+      queryBuilder.andWhere('UPPER(mr.type) LIKE :type', {
+        type: `%${filters.type.toUpperCase()}%`,
       });
     }
 
