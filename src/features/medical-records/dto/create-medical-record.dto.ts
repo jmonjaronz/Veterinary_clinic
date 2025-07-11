@@ -24,6 +24,14 @@ export class CreateMedicalRecordDto {
 
     @IsOptional()
     @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })
+    name?: string;
+
+    @IsOptional()
+    @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })
+    lote?: string;
+
+    @IsOptional()
+    @IsString({ message: 'Las prescripciones deben ser una cadena de texto' })
     prescriptions?: string;
 
     @IsOptional()

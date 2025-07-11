@@ -46,6 +46,13 @@ export class MedicalRecord {
   type: string;
 
   @Column({ type: 'text', nullable: true })
+  name: string;
+
+  @Column({ type: 'text', nullable: true })
+  lote: string;
+
+
+  @Column({ type: 'text', nullable: true })
   prescriptions: string;
 
   @Column({ type: 'text', nullable: true })

@@ -44,8 +44,8 @@ export class VaccinationRecord {
   @Column({ default: true })
   enabled: boolean;
 
-  @Column({ type: 'date' })
-  scheduled_date: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  scheduled_date?: Date | null;
 
   @Column({ type: 'date', nullable: true })
   administered_date: Date;

@@ -91,6 +91,7 @@ export class AppointmentsService {
       pet_id,
       veterinarian_id,
       appointment_type,
+      type: createAppointmentDto.type || '',
       date: appointmentDate,
       status: createAppointmentDto.status || 'programada',
       document: createAppointmentDto.document,
@@ -501,6 +502,7 @@ export class AppointmentsService {
 
   async findAppointmentsWithoutMedicalRecord(
     correlative?: string,
+    type?: string,
   ): Promise<Appointment[]> {
     const query = this.appointmentRepository
       .createQueryBuilder('appointment')
@@ -512,6 +514,11 @@ export class AppointmentsService {
     if (correlative) {
       query.andWhere('appointment.correlative LIKE :correlative', {
         correlative: `%${correlative}%`,
+      });
+    }
+    if (type) {
+      query.andWhere('appointment.type LIKE :type', {
+        type: `%${type}%`,
       });
     }
 

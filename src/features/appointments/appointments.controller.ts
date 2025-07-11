@@ -66,9 +66,10 @@ export class AppointmentsController {
   @Get('without-medical-record')
   async findWithoutMedicalRecord(
     @Query('correlative') correlative?: string,
+    @Query('type') type?: string,
   ): Promise<Appointment[]> {
     return this.appointmentsService.findAppointmentsWithoutMedicalRecord(
-      correlative,
+      correlative,type
     );
   }
 

@@ -83,19 +83,19 @@ export class VaccinationPlansService {
             
             for (const vaccine of speciesVaccinationPlan.vaccines) {
                 // Calcular la fecha programada basada en la edad de la mascota y la edad de aplicación de la vacuna
-                let scheduledDate: Date;
+                let scheduledDate: Date | null = null;
                 let isEnabled = true;
                 
                 if (petAge >= vaccine.application_age) {
                     // Para mascotas adultas o que ya pasaron la edad de aplicación
                     if (vaccine.is_mandatory) {
                         // Si es obligatoria, programar para pronto
-                        scheduledDate = new Date(now);
-                        scheduledDate.setDate(scheduledDate.getDate() + 7);
+                        // scheduledDate = new Date(now);
+                        // scheduledDate.setDate(scheduledDate.getDate() + 7);
                     } else {
                         // Si no es obligatoria, programar pero posiblemente deshabilitar
-                        scheduledDate = new Date(now);
-                        scheduledDate.setDate(scheduledDate.getDate() + 14);
+                        // scheduledDate = new Date(now);
+                        // scheduledDate.setDate(scheduledDate.getDate() + 14);
                         // Podría deshabilitarse basado en criterios adicionales
                         isEnabled = petAge - vaccine.application_age <= 6; // ejemplo: deshabilitar si pasaron más de 6 meses
                     }
@@ -112,7 +112,7 @@ export class VaccinationPlansService {
                     vaccine_id: vaccine.id,
                     plan_vaccine_id: vaccine.id, // Referencia a la vacuna original del plan
                     enabled: isEnabled,
-                    scheduled_date: scheduledDate,
+                    scheduled_date: null,
                     status: 'pendiente',
                     notes: `Vacuna clonada del plan: ${vaccine.name}`
                 });
@@ -633,7 +633,7 @@ export class VaccinationPlansService {
 
         const oldDate = record.scheduled_date;
         record.scheduled_date = scheduled_date;
-        record.notes = (record.notes || '') + `\nReprogramado de ${oldDate.toISOString()} a ${scheduled_date.toISOString()}`;
+        // record.notes = (record.notes || '') + `\nReprogramado de ${oldDate.toISOString()} a ${scheduled_date.toISOString()}`;
         
         return this.vaccinationRecordRepository.save(record);
     }

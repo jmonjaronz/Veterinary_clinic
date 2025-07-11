@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsDate, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsDate, IsString, IsOptional, IsEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateAppointmentDto {
@@ -13,6 +13,10 @@ export class CreateAppointmentDto {
     @IsNotEmpty({ message: 'El tipo de cita es requerido' })
     @IsString({ message: 'El tipo de cita debe ser una cadena de texto' })
     appointment_type: string;
+
+    @IsOptional()
+    @IsString({ message: 'El tipo debe ser una cadena de texto' })
+    type: string;
 
     @IsNotEmpty({ message: 'La fecha de la cita es requerida' })
     @Type(() => Date)

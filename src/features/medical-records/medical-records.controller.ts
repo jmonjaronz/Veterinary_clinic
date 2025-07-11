@@ -22,23 +22,24 @@ import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
-@UseGuards(JwtAuthGuard)
-@Post()
-async create(
-  @Body() createMedicalRecordDto: CreateMedicalRecordDto,
-): Promise<MedicalRecordResponseDto> {
-  // Crear el registro médico
-  const createdRecord = await this.medicalRecordsService.create(createMedicalRecordDto);
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async create(
+    @Body() createMedicalRecordDto: CreateMedicalRecordDto,
+  ): Promise<MedicalRecordResponseDto> {
+    // Crear el registro médico
+    const createdRecord = await this.medicalRecordsService.create(
+      createMedicalRecordDto,
+    );
 
-  // Recargar con relaciones necesarias (pet, appointment, etc.)
-  const record = await this.medicalRecordsService.findOne(createdRecord.id);
+    // Recargar con relaciones necesarias (pet, appointment, etc.)
+    const record = await this.medicalRecordsService.findOne(createdRecord.id);
 
-  // Transformar a DTO para controlar la salida
-  return plainToInstance(MedicalRecordResponseDto, record, {
-    excludeExtraneousValues: true,
-  });
-}
-
+    // Transformar a DTO para controlar la salida
+    return plainToInstance(MedicalRecordResponseDto, record, {
+      excludeExtraneousValues: true,
+    });
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -71,8 +72,11 @@ async create(
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.medicalRecordsService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const record = await this.medicalRecordsService.findOne(+id);
+    return plainToInstance(MedicalRecordResponseDto, record, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @UseGuards(JwtAuthGuard)

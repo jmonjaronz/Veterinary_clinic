@@ -16,7 +16,7 @@ export class Appointment {
   @PrimaryGeneratedColumn()
   id: number;
 
- @Column({ nullable: true })
+  @Column({ nullable: true })
   correlative: string; // control, emergencia, vacunación
 
   @Column()
@@ -35,6 +35,9 @@ export class Appointment {
 
   @Column()
   appointment_type: string; // control, emergencia, vacunación
+
+  @Column({ nullable: true })
+  type: string ;
 
   @Column({ type: 'timestamp' })
   date: Date;

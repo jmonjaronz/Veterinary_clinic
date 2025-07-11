@@ -16,6 +16,8 @@ import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
 import { MedicalRecordFilterDto } from './dto/medical-record-filter.dto';
 import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
+import { plainToInstance } from 'class-transformer';
+import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -94,11 +96,11 @@ export class MedicalRecordsService {
           where: { appointment_id },
         });
 
-        if (existing) {
-          throw new BadRequestException(
-            'La cita ya tiene una atención registrada',
-          );
-        }
+        // if (existing) {
+        //   throw new BadRequestException(
+        //     'La cita ya tiene una atención registrada',
+        //   );
+        // }
       }
 
       // Si la cita no está completada, completarla automáticamente
@@ -115,6 +117,9 @@ export class MedicalRecordsService {
       veterinarian_id,
       diagnosis,
       type,
+      name: createMedicalRecordDto.name,
+      lote: createMedicalRecordDto.lote,
+
       prescriptions: createMedicalRecordDto.prescriptions,
       notes: createMedicalRecordDto.notes,
       appointment_date: createMedicalRecordDto.appointment_date,
@@ -137,6 +142,7 @@ export class MedicalRecordsService {
       .leftJoinAndSelect('mr.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('mr.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('mr.treatments', 'treatments')
       .leftJoinAndSelect('mr.appointment', 'appointment');
 
     // Aplicar filtros básicos
@@ -227,7 +233,12 @@ export class MedicalRecordsService {
       .take(perPage);
 
     // Ejecutar la consulta
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const [rawData, total] = await queryBuilder.getManyAndCount();
+
+    // Transformar los datos a DTO
+    const data = plainToInstance(MedicalRecordResponseDto, rawData, {
+      excludeExtraneousValues: true,
+    });
 
     // Calcular metadatos de paginación
     const lastPage = Math.ceil(total / perPage);
@@ -254,7 +265,13 @@ export class MedicalRecordsService {
   async findOne(id: number): Promise<MedicalRecord> {
     const medicalRecord = await this.medicalRecordRepository.findOne({
       where: { id },
-      relations: ['pet', 'pet.owner', 'veterinarian', 'appointment'],
+      relations: [
+        'pet',
+        'pet.owner',
+        'veterinarian',
+        'appointment',
+        'treatments',
+      ],
     });
 
     if (!medicalRecord) {
