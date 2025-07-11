@@ -502,7 +502,7 @@ export class AppointmentsService {
 
   async findAppointmentsWithoutMedicalRecord(
     correlative?: string,
-    type?: string,
+    appointment_type?: string,
   ): Promise<Appointment[]> {
     const query = this.appointmentRepository
       .createQueryBuilder('appointment')
@@ -517,10 +517,13 @@ export class AppointmentsService {
       });
     }
 
-    if (type) {
-      query.andWhere('UPPER(appointment.type) LIKE :type', {
-        type: `%${type.toUpperCase()}%`,
-      });
+    if (appointment_type) {
+      query.andWhere(
+        'UPPER(appointment.appointment_type) LIKE :appointment_type',
+        {
+          appointment_type: `%${appointment_type.toUpperCase()}%`,
+        },
+      );
     }
 
     return query.orderBy('appointment.id', 'DESC').limit(50).getMany();
