@@ -40,6 +40,12 @@ export class Hospitalization {
   @Column({ type: 'date' })
   admission_date: Date;
 
+  @Column({ type: 'text', nullable: true })
+  treatment: string;
+
+  @Column({ type: 'text', nullable: true })
+  route_pdf: string;
+
   @Column({ type: 'date', nullable: true })
   discharge_date: Date;
 

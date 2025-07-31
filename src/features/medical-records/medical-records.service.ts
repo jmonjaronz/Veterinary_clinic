@@ -18,6 +18,7 @@ import { MedicalRecordFilterDto } from './dto/medical-record-filter.dto';
 import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
 import { plainToInstance } from 'class-transformer';
 import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
+import { fieldsToUpdate } from './entities/medical-record-update.entitiy';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -117,16 +118,40 @@ export class MedicalRecordsService {
       veterinarian_id,
       diagnosis,
       type,
-      name: createMedicalRecordDto.name,
-      lote: createMedicalRecordDto.lote,
 
+      lote: createMedicalRecordDto.lote,
       care_type: createMedicalRecordDto.care_type,
       date_next_application: createMedicalRecordDto.date_next_application,
       note_next_application: createMedicalRecordDto.note_next_application,
-
-      prescriptions: createMedicalRecordDto.prescriptions,
-      notes: createMedicalRecordDto.notes,
       appointment_date: createMedicalRecordDto.appointment_date,
+
+      // CAMPOS DE ANÁLISIS CLÍNICO
+      anamnesis: createMedicalRecordDto.anamnesis,
+      weight: createMedicalRecordDto.weight,
+      temperature: createMedicalRecordDto.temperature,
+      heart_rate: createMedicalRecordDto.heart_rate,
+      breathing_frequency: createMedicalRecordDto.breathing_frequency,
+      capillary_refill_time: createMedicalRecordDto.capillary_refill_time,
+      mucous: createMedicalRecordDto.mucous,
+
+      // BOOLEANOS
+      swallow_reflex: createMedicalRecordDto.swallow_reflex,
+      cough_reflex: createMedicalRecordDto.cough_reflex,
+      palmo_percussion: createMedicalRecordDto.palmo_percussion,
+
+      // CAMPOS DE OBSERVACIÓN
+      lymph_nodes: createMedicalRecordDto.lymph_nodes,
+      consciousness_state: createMedicalRecordDto.consciousness_state,
+      nutritional_state: createMedicalRecordDto.nutritional_state,
+      hydration_state: createMedicalRecordDto.hydration_state,
+      pain_level: createMedicalRecordDto.pain_level,
+      itch_intensity: createMedicalRecordDto.itch_intensity,
+      clinical_signs: createMedicalRecordDto.clinical_signs,
+      blood_pressure: createMedicalRecordDto.blood_pressure,
+      presumptive_diagnosis: createMedicalRecordDto.presumptive_diagnosis,
+      recommended_tests: createMedicalRecordDto.recommended_tests,
+      definitive_diagnosis: createMedicalRecordDto.definitive_diagnosis,
+      diet: createMedicalRecordDto.diet,
     });
 
     return this.medicalRecordRepository.save(medicalRecord);
@@ -372,7 +397,7 @@ export class MedicalRecordsService {
   ): Promise<MedicalRecord> {
     const medicalRecord = await this.findOne(id);
 
-    // Si se intenta cambiar la mascota, verificar que exista
+    // Validación: Cambio de mascota
     if (
       updateMedicalRecordDto.pet_id &&
       updateMedicalRecordDto.pet_id !== medicalRecord.pet_id
@@ -386,9 +411,11 @@ export class MedicalRecordsService {
           `Mascota con ID ${updateMedicalRecordDto.pet_id} no encontrada`,
         );
       }
+
+      medicalRecord.pet_id = updateMedicalRecordDto.pet_id;
     }
 
-    // Si se intenta cambiar el veterinario, verificar que exista y sea staff
+    // Validación: Cambio de veterinario
     if (
       updateMedicalRecordDto.veterinarian_id &&
       updateMedicalRecordDto.veterinarian_id !== medicalRecord.veterinarian_id
@@ -408,9 +435,11 @@ export class MedicalRecordsService {
           `La persona con ID ${updateMedicalRecordDto.veterinarian_id} no es un miembro del staff`,
         );
       }
+
+      medicalRecord.veterinarian_id = updateMedicalRecordDto.veterinarian_id;
     }
 
-    // Si se intenta cambiar la cita, verificar que exista y corresponda a la mascota y al veterinario
+    // Validación: Cambio de cita
     if (
       updateMedicalRecordDto.appointment_id &&
       updateMedicalRecordDto.appointment_id !== medicalRecord.appointment_id
@@ -441,15 +470,25 @@ export class MedicalRecordsService {
         );
       }
 
-      // Si la cita no está completada, completarla automáticamente
       if (appointment.status !== 'completada') {
         appointment.status = 'completada';
         await this.appointmentRepository.save(appointment);
       }
+
+      medicalRecord.appointment_id = updateMedicalRecordDto.appointment_id;
     }
 
-    // Actualizar los campos
-    Object.assign(medicalRecord, updateMedicalRecordDto);
+    // Asignar otros campos si existen en el DTO (solo si vienen)
+    
+
+    for (const field of fieldsToUpdate) {
+      if (
+        field in updateMedicalRecordDto &&
+        updateMedicalRecordDto[field] !== undefined
+      ) {
+        medicalRecord[field] = updateMedicalRecordDto[field];
+      }
+    }
 
     return this.medicalRecordRepository.save(medicalRecord);
   }

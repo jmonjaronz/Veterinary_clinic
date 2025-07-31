@@ -32,17 +32,42 @@ export class MedicalRecordResponseDto {
   @Expose() diagnosis: string;
   @Expose() type: string;
 
+  @Expose() lote: string;
   @Expose() care_type: string;
   @Expose() date_next_application: Date;
   @Expose() note_next_application: string;
 
-  @Expose() name: string;
-  @Expose() lote: string;
+  @Expose() appointment_date: Date;
 
-  @Expose() prescriptions: string;
-  @Expose() notes: string;
-  @Expose() appointment_date: string;
+  // CAMPOS CLÍNICOS
+  @Expose() anamnesis: string;
+  @Expose() weight: string;
+  @Expose() temperature: string;
+  @Expose() heart_rate: string;
+  @Expose() breathing_frequency: string;
+  @Expose() capillary_refill_time: string;
+  @Expose() mucous: string;
 
+  // BOOLEANOS
+  @Expose() swallow_reflex: boolean;
+  @Expose() cough_reflex: boolean;
+  @Expose() palmo_percussion: boolean;
+
+  // OBSERVACIONES
+  @Expose() lymph_nodes: string;
+  @Expose() consciousness_state: string;
+  @Expose() nutritional_state: string;
+  @Expose() hydration_state: string;
+  @Expose() pain_level: string;
+  @Expose() itch_intensity: string;
+  @Expose() clinical_signs: string;
+  @Expose() blood_pressure: string;
+  @Expose() presumptive_diagnosis: string;
+  @Expose() recommended_tests: string;
+  @Expose() definitive_diagnosis: string;
+  @Expose() diet: string;
+
+  // FECHAS
   @Expose() created_at: Date;
   @Expose() updatedAt: Date;
   @Expose() deletedAt: Date | null;
