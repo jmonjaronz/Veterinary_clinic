@@ -11,7 +11,11 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+# Ignorar todo el contenido de la carpeta uploads
+/uploads/*
 
+# Pero permitir que la carpeta se mantenga vacía
+!/uploads/.gitkeep
 # OS
 .DS_Store
 
