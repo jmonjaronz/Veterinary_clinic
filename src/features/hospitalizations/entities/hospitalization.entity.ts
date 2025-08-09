@@ -58,3 +58,5 @@ export class Hospitalization {
   @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deletedAt?: Date | null;
 }
+
+
