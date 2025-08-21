@@ -520,13 +520,18 @@ async getPetCompleteHistory(
     new Date(now.getFullYear(), now.getMonth() + 1, 0),
     true,
   );
+    const defaultStart = this.normalizeDate(new Date(2024, 0, 1)); // Enero = 0
+   const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const defaultEnd = this.normalizeDate(tomorrow, true);
 
   const inicio = fechaInicio
     ? this.normalizeDate(new Date(fechaInicio))
-    : startOfMonth;
+    : defaultStart;
   const fin = fechaFin
     ? this.normalizeDate(new Date(fechaFin), true)
-    : endOfMonth;
+    : defaultEnd;
 
   // Verificar si la mascota existe
   const pet = await this.petRepository.findOne({
