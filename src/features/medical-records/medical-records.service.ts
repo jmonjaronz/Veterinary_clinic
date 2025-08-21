@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { MedicalRecord } from './entities/medical-record.entity';
 import { Pet } from '../pets/entities/pet.entity';
 import { Person } from '../persons/entities/person.entity';
@@ -479,7 +479,6 @@ export class MedicalRecordsService {
     }
 
     // Asignar otros campos si existen en el DTO (solo si vienen)
-    
 
     for (const field of fieldsToUpdate) {
       if (
@@ -501,89 +500,127 @@ export class MedicalRecordsService {
     }
   }
 
-  async getPetCompleteHistory(petId: number): Promise<PetCompleteHistoryDto> {
-    // Verificar si la mascota existe
-    const pet = await this.petRepository.findOne({
-      where: { id: petId },
-      relations: ['owner', 'species'],
-    });
-
-    if (!pet) {
-      throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
-    }
-
-    // Obtener registros médicos
-    const medicalRecords = await this.medicalRecordRepository.find({
-      where: { pet_id: petId },
-      relations: ['veterinarian', 'appointment', 'treatments'],
-      order: { appointment_date: 'DESC' },
-    });
-
-    // Obtener citas
-    const appointments = await this.appointmentRepository.find({
-      where: { pet_id: petId },
-      relations: ['veterinarian'],
-      order: { date: 'DESC' },
-    });
-
-    // Obtener hospitalizaciones
-    const hospitalizations = await this.hospitalizationRepository.find({
-      where: { pet_id: petId },
-      relations: ['veterinarian'],
-      order: { admission_date: 'DESC' },
-    });
-
-    // Obtener tratamientos directamente (no vinculados a un registro médico)
-    const treatments = await this.treatmentRepository
-      .createQueryBuilder('treatment')
-      .innerJoin('treatment.medical_record', 'mr')
-      .where('mr.pet_id = :petId', { petId })
-      .leftJoinAndSelect('treatment.medical_record', 'medical_record')
-      .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
-      .orderBy('treatment.date', 'DESC')
-      .getMany();
-
-    // Obtener vacunas aplicadas (status='completado')
-    const vaccinations = await this.vaccinationRecordRepository
-      .createQueryBuilder('vr')
-      .innerJoin('vr.vaccination_plan', 'vp')
-      .innerJoin('vp.pet', 'pet')
-      .where('pet.id = :petId', { petId })
-      .andWhere('vr.vaccine = :status', { status: 'completado' })
-      .leftJoinAndSelect('vr.vaccine', 'vaccine')
-      .leftJoinAndSelect('vr.vaccination_plan', 'plan')
-      .orderBy('vr.administered_date', 'DESC')
-      .getMany();
-
-    // Crear timeline unificado
-    const timeline = this.createTimelineFromRecords(
-      medicalRecords,
-      appointments,
-      hospitalizations,
-      treatments,
-      vaccinations,
-    );
-
-    // Construir respuesta
-    const response: PetCompleteHistoryDto = {
-      medical_records: medicalRecords,
-      appointments,
-      hospitalizations,
-      treatments,
-      vaccinations,
-      pet_info: {
-        id: pet.id,
-        name: pet.name,
-        species: pet.species.name,
-        breed: pet.breed,
-        age: pet.age,
-        owner_name: pet.owner.full_name,
-      },
-      timeline,
-    };
-
-    return response;
+  private normalizeDate(date: Date, endOfDay = false): Date {
+  const d = new Date(date);
+  if (endOfDay) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
   }
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+}
+
+async getPetCompleteHistory(
+  petId: number,
+  fechaInicio?: string,
+  fechaFin?: string,
+): Promise<PetCompleteHistoryDto> {
+  // Valores por defecto: primer y último día del mes actual
+  const now = new Date();
+  const startOfMonth = this.normalizeDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  const endOfMonth = this.normalizeDate(
+    new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    true,
+  );
+
+  const inicio = fechaInicio
+    ? this.normalizeDate(new Date(fechaInicio))
+    : startOfMonth;
+  const fin = fechaFin
+    ? this.normalizeDate(new Date(fechaFin), true)
+    : endOfMonth;
+
+  // Verificar si la mascota existe
+  const pet = await this.petRepository.findOne({
+    where: { id: petId },
+    relations: ['owner', 'species'],
+  });
+
+  if (!pet) {
+    throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
+  }
+
+  // Registros médicos
+  const medicalRecords = await this.medicalRecordRepository.find({
+    where: {
+      pet_id: petId,
+      appointment_date: Between(inicio, fin),
+    },
+    relations: ['veterinarian', 'appointment', 'treatments'],
+    order: { appointment_date: 'DESC' },
+  });
+
+  // Citas
+  const appointments = await this.appointmentRepository.find({
+    where: {
+      pet_id: petId,
+      date: Between(inicio, fin),
+    },
+    relations: ['veterinarian'],
+    order: { date: 'DESC' },
+  });
+
+  // Hospitalizaciones
+  const hospitalizations = await this.hospitalizationRepository.find({
+    where: {
+      pet_id: petId,
+      admission_date: Between(inicio, fin),
+    },
+    relations: ['veterinarian'],
+    order: { admission_date: 'DESC' },
+  });
+
+  // Tratamientos
+  const treatments = await this.treatmentRepository
+    .createQueryBuilder('treatment')
+    .innerJoin('treatment.medical_record', 'mr')
+    .where('mr.pet_id = :petId', { petId })
+    .andWhere('treatment.date BETWEEN :inicio AND :fin', { inicio, fin })
+    .leftJoinAndSelect('treatment.medical_record', 'medical_record')
+    .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
+    .orderBy('treatment.date', 'DESC')
+    .getMany();
+
+  // Vacunas (status = completado)
+  const vaccinations = await this.vaccinationRecordRepository
+    .createQueryBuilder('vr')
+    .innerJoin('vr.vaccination_plan', 'vp')
+    .innerJoin('vp.pet', 'pet')
+    .where('pet.id = :petId', { petId })
+    .andWhere('vr.status = :status', { status: 'completado' })
+    .andWhere('vr.created_at BETWEEN :inicio AND :fin', { inicio, fin })
+    .leftJoinAndSelect('vr.vaccine', 'vaccine')
+    .leftJoinAndSelect('vr.vaccination_plan', 'plan')
+    .orderBy('vr.administered_date', 'DESC')
+    .getMany();
+
+  // Timeline
+  const timeline = this.createTimelineFromRecords(
+    medicalRecords,
+    appointments,
+    hospitalizations,
+    treatments,
+    vaccinations,
+    inicio,
+    fin,
+  );
+
+  return {
+    medical_records: medicalRecords,
+    appointments,
+    hospitalizations,
+    treatments,
+    vaccinations,
+    pet_info: {
+      id: pet.id,
+      name: pet.name,
+      species: pet.species.name,
+      breed: pet.breed,
+      age: pet.age,
+      owner_name: pet.owner.full_name,
+    },
+    timeline,
+  };
+}
+
 
   private createTimelineFromRecords(
     medicalRecords: MedicalRecord[],
@@ -591,6 +628,8 @@ export class MedicalRecordsService {
     hospitalizations: Hospitalization[],
     treatments: Treatment[],
     vaccinations: VaccinationRecord[],
+    inicio: Date,
+    fin: Date,
   ): Array<{
     id: string;
     type:
@@ -601,8 +640,8 @@ export class MedicalRecordsService {
       | 'vaccination';
     date: Date;
     description: string;
-    veterinarian?: string | undefined;
-    status?: string | undefined;
+    veterinarian?: string;
+    status?: string;
   }> {
     const timeline: Array<{
       id: string;
@@ -614,13 +653,20 @@ export class MedicalRecordsService {
         | 'vaccination';
       date: Date;
       description: string;
-      veterinarian?: string | undefined;
-      status?: string | undefined;
+      veterinarian?: string;
+      status?: string;
     }> = [];
 
-    // Agregar registros médicos al timeline
-    medicalRecords.forEach((record: MedicalRecord) => {
-      if (record.appointment_date) {
+    // Helper para verificar si fecha está en rango
+    const inRange = (date: Date | string | null | undefined): boolean => {
+      if (!date) return false;
+      const d = new Date(date);
+      return d >= inicio && d <= fin;
+    };
+
+    // Registros médicos
+    medicalRecords.forEach((record) => {
+      if (record.appointment_date && inRange(record.appointment_date)) {
         timeline.push({
           id: `mr_${record.id}`,
           type: 'medical_record',
@@ -631,9 +677,9 @@ export class MedicalRecordsService {
       }
     });
 
-    // Agregar citas al timeline
-    appointments.forEach((appointment: Appointment) => {
-      if (appointment.date) {
+    // Citas
+    appointments.forEach((appointment) => {
+      if (appointment.date && inRange(appointment.date)) {
         timeline.push({
           id: `app_${appointment.id}`,
           type: 'appointment',
@@ -645,9 +691,12 @@ export class MedicalRecordsService {
       }
     });
 
-    // Agregar hospitalizaciones al timeline
-    hospitalizations.forEach((hospitalization: Hospitalization) => {
-      if (hospitalization.admission_date) {
+    // Hospitalizaciones
+    hospitalizations.forEach((hospitalization) => {
+      if (
+        hospitalization.admission_date &&
+        inRange(hospitalization.admission_date)
+      ) {
         timeline.push({
           id: `hosp_${hospitalization.id}`,
           type: 'hospitalization',
@@ -659,9 +708,9 @@ export class MedicalRecordsService {
       }
     });
 
-    // Agregar tratamientos al timeline
-    treatments.forEach((treatment: Treatment) => {
-      if (treatment.date) {
+    // Tratamientos
+    treatments.forEach((treatment) => {
+      if (treatment.date && inRange(treatment.date)) {
         timeline.push({
           id: `treat_${treatment.id}`,
           type: 'treatment',
@@ -672,25 +721,23 @@ export class MedicalRecordsService {
       }
     });
 
-    // Agregar vacunas al timeline
-    vaccinations.forEach((vaccination: VaccinationRecord) => {
-      if (vaccination.administered_date) {
+    // Vacunas
+    vaccinations.forEach((vaccination) => {
+      if (vaccination.created_at && inRange(vaccination.created_at)) {
         timeline.push({
           id: `vac_${vaccination.id}`,
           type: 'vaccination',
-          date: new Date(vaccination.administered_date),
+          date: new Date(vaccination.created_at),
           description: `Vacuna aplicada: ${vaccination.vaccine?.name || 'Vacuna'}`,
           status: vaccination.status,
         });
       }
     });
 
-    // Ordenar el timeline por fecha descendente
+    // Ordenar timeline
     return timeline.sort((a, b) => {
       if (!a.date || !b.date) return 0;
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return dateB - dateA;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }
 }

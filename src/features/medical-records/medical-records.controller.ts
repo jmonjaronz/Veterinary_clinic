@@ -83,8 +83,14 @@ export class MedicalRecordsController {
   @Get('pet/:petId/complete-history')
   getPetCompleteHistory(
     @Param('petId') petId: string,
+    @Query('fecha_inicio') fechaInicio?: string,
+    @Query('fecha_fin') fechaFin?: string,
   ): Promise<PetCompleteHistoryDto> {
-    return this.medicalRecordsService.getPetCompleteHistory(+petId);
+    return this.medicalRecordsService.getPetCompleteHistory(
+      +petId,
+      fechaInicio,
+      fechaFin,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
