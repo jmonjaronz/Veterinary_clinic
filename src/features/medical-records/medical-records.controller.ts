@@ -8,6 +8,9 @@ import {
   Delete,
   UseGuards,
   Query,
+  UseInterceptors,
+  BadRequestException,
+  UploadedFiles,
 } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
@@ -17,6 +20,9 @@ import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
 import { plainToInstance } from 'class-transformer';
 import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('medical-records')
 export class MedicalRecordsController {
@@ -106,5 +112,51 @@ export class MedicalRecordsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.medicalRecordsService.remove(+id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/upload-files')
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      // hasta 10 archivos
+      storage: diskStorage({
+        destination: './uploads/medical-records',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(
+            null,
+            `mr-${req.params.id}-${uniqueSuffix}${extname(file.originalname)}`,
+          );
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.originalname.match(/\.(pdf|jpg|jpeg|png)$/)) {
+          return cb(
+            new BadRequestException('Solo se permiten archivos PDF o imágenes'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadFiles(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.medicalRecordsService.saveFiles(
+      +id,
+      files.map((f) => f.path),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/remove-file')
+  async removeFile(
+    @Param('id') id: string,
+    @Query('filePath') filePath: string,
+  ) {
+    return this.medicalRecordsService.removeFile(+id, filePath);
   }
 }

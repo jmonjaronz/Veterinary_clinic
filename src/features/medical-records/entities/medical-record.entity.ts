@@ -21,10 +21,9 @@ export class MedicalRecord {
   @Column()
   pet_id: number;
 
- @ManyToOne('Pet', 'medical_records')
+  @ManyToOne('Pet', 'medical_records')
   @JoinColumn({ name: 'pet_id' })
   pet: Pet;
-
 
   @Column({ nullable: true })
   appointment_id: number;
@@ -45,6 +44,9 @@ export class MedicalRecord {
 
   @Column({ type: 'text' })
   type: string;
+
+  @Column({ type: 'text', nullable: true })
+  route_files: string; // Guardará las rutas separadas por comas
 
   // @Column({ type: 'text', nullable: true })
   // name: string;

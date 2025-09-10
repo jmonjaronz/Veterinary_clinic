@@ -19,6 +19,9 @@ import { PetCompleteHistoryDto } from './dto/pet-complete-history.dto';
 import { plainToInstance } from 'class-transformer';
 import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 import { fieldsToUpdate } from './entities/medical-record-update.entitiy';
+import * as path from 'path';
+import * as fs from 'fs';
+
 
 @Injectable()
 export class MedicalRecordsService {
@@ -745,4 +748,45 @@ async getPetCompleteHistory(
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }
+
+  async saveFiles(id: number, newFilePaths: string[]): Promise<MedicalRecord> {
+  const record = await this.medicalRecordRepository.findOne({ where: { id } });
+  if (!record) {
+    throw new NotFoundException('Registro médico no encontrado');
+  }
+
+  const existingFiles = record.route_files
+    ? record.route_files.split(',')
+    : [];
+
+  // Concatenar los nuevos archivos
+  const updatedFiles = [...existingFiles, ...newFilePaths];
+  record.route_files = updatedFiles.join(',');
+
+  return await this.medicalRecordRepository.save(record);
+}
+
+async removeFile(id: number, fileName: string): Promise<MedicalRecord> {
+  const record = await this.medicalRecordRepository.findOne({ where: { id } });
+  if (!record) {
+    throw new NotFoundException('Registro médico no encontrado');
+  }
+
+  // Archivos guardados (con rutas)
+  const files = record.route_files ? record.route_files.split(',') : [];
+
+  // Filtrar quitando el que termina en el nombre recibido
+  const updatedFiles = files.filter(f => !f.endsWith(fileName));
+
+  // Construir la ruta absoluta en disco
+  const fullPath = path.join(process.cwd(), 'uploads', 'medical-records', fileName);
+
+  if (fs.existsSync(fullPath)) {
+    fs.unlinkSync(fullPath);
+  }
+
+  record.route_files = updatedFiles.join(',');
+  return await this.medicalRecordRepository.save(record);
+}
+
 }
