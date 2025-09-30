@@ -11,13 +11,15 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
+  Req,
 } from '@nestjs/common';
 import { HospitalizationsService } from './hospitalizations.service';
 import { CreateHospitalizationDto } from './dto/create-hospitalization.dto';
 import { UpdateHospitalizationDto } from './dto/update-hospitalization.dto';
 import { HospitalizationFilterDto } from './dto/hospitalization-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { plainToInstance } from 'class-transformer';
@@ -52,8 +54,12 @@ export class HospitalizationsController {
     }),
   )
   @Post()
-  async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
-    // 1. Validar DTO
+  async create(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+    @Req() req,
+  ) {
+    const user = req.user; // 1. Validar DTO
     const dto = plainToInstance(CreateHospitalizationDto, body);
     const errors = await validate(dto, {
       whitelist: true,
@@ -69,7 +75,7 @@ export class HospitalizationsController {
 
     // 2. Crear hospitalización
     const createdHospitalization =
-      await this.hospitalizationsService.create(dto);
+      await this.hospitalizationsService.create(dto, user);
 
     // 3. Si hay archivo, guardar ruta del PDF
     if (file?.filename) {
@@ -147,9 +153,10 @@ export class HospitalizationsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id/upload-pdf')
+  @Post(':id/upload-files')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FilesInterceptor('files', 10, {
+      // hasta 10 archivos
       storage: diskStorage({
         destination: './uploads/hospitalizations',
         filename: (req, file, cb) => {
@@ -157,14 +164,14 @@ export class HospitalizationsController {
             Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(
             null,
-            `hosp-${req.params.id}-${uniqueSuffix}${extname(file.originalname)}`,
+            `mr-${req.params.id}-${uniqueSuffix}${extname(file.originalname)}`,
           );
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.pdf$/)) {
+        if (!file.originalname.match(/\.(pdf|jpg|jpeg|png)$/)) {
           return cb(
-            new BadRequestException('Solo se permiten archivos PDF'),
+            new BadRequestException('Solo se permiten archivos PDF o imágenes'),
             false,
           );
         }
@@ -172,10 +179,22 @@ export class HospitalizationsController {
       },
     }),
   )
-  async uploadFile(
+  async uploadFiles(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.hospitalizationsService.savePdf(+id, file.path);
+    return this.hospitalizationsService.saveFiles(
+      +id,
+      files.map((f) => f.path),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/remove-file')
+  async removeFile(
+    @Param('id') id: string,
+    @Query('filePath') filePath: string,
+  ) {
+    return this.hospitalizationsService.removeFile(+id, filePath);
   }
 }

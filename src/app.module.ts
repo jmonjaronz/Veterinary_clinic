@@ -18,6 +18,7 @@ import { AppointmentsModule } from './features/appointments/appointments.module'
 import { AppConfigModule } from './common/config/config.module';
 import { DatabaseModule } from './common/database/database.module';
 import { AuthModule } from './common/auth/auth.module';
+import { OpinionModule } from './features/opinion-medical-record/opinion-medical-record.module';
 
 @Module({
   imports: [
@@ -40,6 +41,8 @@ import { AuthModule } from './common/auth/auth.module';
     VaccinesModule,
     TreatmentsModule,
     SurgicalConsentsModule,
+    OpinionModule
+    
   ],
   controllers: [],
   providers: [],

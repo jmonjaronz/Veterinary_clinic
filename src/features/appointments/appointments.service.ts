@@ -26,6 +26,7 @@ export class AppointmentsService {
 
   async create(
     createAppointmentDto: CreateAppointmentDto,
+    loggedUser: any, // o mejor: User si tienes el tipo importado
   ): Promise<Appointment> {
     const { pet_id, veterinarian_id, appointment_type, date } =
       createAppointmentDto;
@@ -85,6 +86,7 @@ export class AppointmentsService {
       const lastNumber = parseInt(lastAppointment.correlative, 10);
       nextCorrelative = (lastNumber + 1).toString().padStart(8, '0');
     }
+    console.log(loggedUser);
 
     // Crear la cita
     const appointment = this.appointmentRepository.create({
@@ -95,6 +97,7 @@ export class AppointmentsService {
       date: appointmentDate,
       status: createAppointmentDto.status || 'programada',
       document: createAppointmentDto.document,
+      user_id: loggedUser.id,
       correlative: nextCorrelative,
     });
     console.log(appointment);
@@ -110,6 +113,7 @@ export class AppointmentsService {
     const queryBuilder = this.appointmentRepository
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.pet', 'pet')
+      .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian');
 

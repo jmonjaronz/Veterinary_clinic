@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
+import { User } from 'src/features/users/entities/user.entity';
 
 @Entity({ name: 'appointments' })
 export class Appointment {
@@ -36,8 +37,8 @@ export class Appointment {
   @Column()
   appointment_type: string; // control, emergencia, vacunación
 
-  @Column({ nullable: true, default:"Normal" })
-  type: string ;
+  @Column({ nullable: true, default: 'Normal' })
+  type: string;
 
   @Column({ type: 'timestamp' })
   date: Date;
@@ -47,6 +48,13 @@ export class Appointment {
 
   @Column({ type: 'text', nullable: true })
   document: string;
+
+  @Column({ nullable: true })
+  user_id: number;
+
+  @ManyToOne(() => User, (user) => user.appointments)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;

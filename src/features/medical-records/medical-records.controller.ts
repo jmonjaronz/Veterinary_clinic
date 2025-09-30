@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   BadRequestException,
   UploadedFiles,
+  Req,
 } from '@nestjs/common';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
@@ -32,10 +33,12 @@ export class MedicalRecordsController {
   @Post()
   async create(
     @Body() createMedicalRecordDto: CreateMedicalRecordDto,
+    @Req() req,
   ): Promise<MedicalRecordResponseDto> {
     // Crear el registro médico
     const createdRecord = await this.medicalRecordsService.create(
       createMedicalRecordDto,
+      req.user,
     );
 
     // Recargar con relaciones necesarias (pet, appointment, etc.)

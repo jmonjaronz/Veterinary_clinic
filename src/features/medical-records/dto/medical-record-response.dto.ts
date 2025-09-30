@@ -1,8 +1,11 @@
 import { Expose, Type } from 'class-transformer';
 import { AppointmentResponseDto } from 'src/features/appointments/dto/appointment-response.dto';
+import { OpinionResponseDto } from 'src/features/opinion-medical-record/dto/opinion-medical-records-response.dto';
+import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
 import { PersonResponseDto } from 'src/features/persons/dto/person-response.dto';
 import { PetResponseDto } from 'src/features/pets/dto/pet-response-expose.dto';
 import { TreatmentResponseDto } from 'src/features/treatments/dto/treatments-response.dto';
+import { UserResponseDto } from 'src/features/users/dto/user-response.dto';
 
 export class MedicalRecordResponseDto {
   @Expose() id: number;
@@ -66,6 +69,16 @@ export class MedicalRecordResponseDto {
   @Expose() recommended_tests: string;
   @Expose() definitive_diagnosis: string;
   @Expose() diet: string;
+
+  @Expose() user_id: number;
+
+  @Expose()
+  @Type(() => UserResponseDto)
+  user: UserResponseDto;
+
+  @Expose()
+  @Type(() => OpinionResponseDto)
+  opinions: OpinionResponseDto[];
 
   // FECHAS
   @Expose() created_at: Date;

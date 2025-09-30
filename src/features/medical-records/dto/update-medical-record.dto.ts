@@ -50,7 +50,7 @@ export class UpdateMedicalRecordDto {
   @IsOptional()
   @Type(() => Date)
   @IsDate({ message: 'La fecha de la cita debe ser válida' })
-  appointment_date?: Date; // Ej: "2025-07-30"
+  appointment_date?: string; // Ej: "2025-07-30"
 
   // Medicamentos y observaciones
   @IsOptional()

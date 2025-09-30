@@ -5,6 +5,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -47,9 +48,11 @@ export class CreateMedicalRecordDto {
   note_next_application?: string;
 
   @IsNotEmpty({ message: 'La fecha de la cita es requerida' })
-  @Type(() => Date)
-  @IsDate({ message: 'La fecha de la cita debe ser válida' })
-  appointment_date: Date;
+  @IsDateString(
+    {},
+    { message: 'La fecha de la cita debe tener formato válido YYYY-MM-DD' },
+  )
+  appointment_date: string; // <-- string (no String, ni Date)
 
   // CAMPOS CLÍNICOS
   @IsOptional()
@@ -69,15 +72,21 @@ export class CreateMedicalRecordDto {
   heart_rate?: string;
 
   @IsOptional()
-  @IsString({ message: 'La frecuencia respiratoria debe ser una cadena de texto' })
+  @IsString({
+    message: 'La frecuencia respiratoria debe ser una cadena de texto',
+  })
   breathing_frequency?: string;
 
   @IsOptional()
-  @IsString({ message: 'El tiempo de llenado capilar debe ser una cadena de texto' })
+  @IsString({
+    message: 'El tiempo de llenado capilar debe ser una cadena de texto',
+  })
   capillary_refill_time?: string;
 
   @IsOptional()
-  @IsString({ message: 'El estado de las mucosas debe ser una cadena de texto' })
+  @IsString({
+    message: 'El estado de las mucosas debe ser una cadena de texto',
+  })
   mucous?: string;
 
   // BOOLEANOS
@@ -95,7 +104,9 @@ export class CreateMedicalRecordDto {
 
   // OBSERVACIONES
   @IsOptional()
-  @IsString({ message: 'La palpación de linfonódulos debe ser una cadena de texto' })
+  @IsString({
+    message: 'La palpación de linfonódulos debe ser una cadena de texto',
+  })
   lymph_nodes?: string;
 
   @IsOptional()
@@ -107,7 +118,9 @@ export class CreateMedicalRecordDto {
   nutritional_state?: string;
 
   @IsOptional()
-  @IsString({ message: 'El estado de hidratación debe ser una cadena de texto' })
+  @IsString({
+    message: 'El estado de hidratación debe ser una cadena de texto',
+  })
   hydration_state?: string;
 
   @IsOptional()
@@ -115,7 +128,9 @@ export class CreateMedicalRecordDto {
   pain_level?: string;
 
   @IsOptional()
-  @IsString({ message: 'La intensidad del prurito debe ser una cadena de texto' })
+  @IsString({
+    message: 'La intensidad del prurito debe ser una cadena de texto',
+  })
   itch_intensity?: string;
 
   @IsOptional()
@@ -127,15 +142,21 @@ export class CreateMedicalRecordDto {
   blood_pressure?: string;
 
   @IsOptional()
-  @IsString({ message: 'El diagnóstico presuntivo debe ser una cadena de texto' })
+  @IsString({
+    message: 'El diagnóstico presuntivo debe ser una cadena de texto',
+  })
   presumptive_diagnosis?: string;
 
   @IsOptional()
-  @IsString({ message: 'Los exámenes auxiliares deben ser una cadena de texto' })
+  @IsString({
+    message: 'Los exámenes auxiliares deben ser una cadena de texto',
+  })
   recommended_tests?: string;
 
   @IsOptional()
-  @IsString({ message: 'El diagnóstico definitivo debe ser una cadena de texto' })
+  @IsString({
+    message: 'El diagnóstico definitivo debe ser una cadena de texto',
+  })
   definitive_diagnosis?: string;
 
   @IsOptional()

@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
+import { User } from 'src/features/users/entities/user.entity';
 
 @Entity({ name: 'hospitalizations' })
 export class Hospitalization {
@@ -52,11 +53,16 @@ export class Hospitalization {
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;
 
+  @Column({ nullable: true })
+  user_id: number;
+  
+  @ManyToOne(() => User, (user) => user.hospitalizations)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
   @UpdateDateColumn({ name: 'updated_at', nullable: true })
   updatedAt: Date | null;
 
   @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deletedAt?: Date | null;
 }
-
-

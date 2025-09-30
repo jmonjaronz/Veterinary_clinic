@@ -26,7 +26,10 @@ export class TreatmentsService {
         `Registro médico con ID ${dto.medical_record_id} no encontrado`,
       );
 
-    const treatment = this.treatmentRepository.create(dto);
+    const treatment = this.treatmentRepository.create({
+      ...dto,
+      medications: dto.medications,
+    });
     return this.treatmentRepository.save(treatment);
   }
 
@@ -152,6 +155,11 @@ export class TreatmentsService {
   async update(id: number, dto: UpdateTreatmentDto): Promise<Treatment> {
     const treatment = await this.findOne(id);
 
+    if (!treatment) {
+      throw new NotFoundException(`Tratamiento con ID ${id} no encontrado`);
+    }
+
+    // Validar si cambia el registro médico
     if (
       dto.medical_record_id &&
       dto.medical_record_id !== treatment.medical_record_id
@@ -159,13 +167,23 @@ export class TreatmentsService {
       const record = await this.medicalRecordRepository.findOne({
         where: { id: dto.medical_record_id },
       });
-      if (!record)
+
+      if (!record) {
         throw new NotFoundException(
           `Registro médico con ID ${dto.medical_record_id} no encontrado`,
         );
+      }
     }
 
+    // Asignar cambios básicos
     Object.assign(treatment, dto);
+
+    // Si vienen medicamentos como array, procesarlos
+    if (dto.medications) {
+      // Asignar directamente el array de medicamentos
+      treatment.medications = dto.medications;
+    }
+
     return this.treatmentRepository.save(treatment);
   }
 

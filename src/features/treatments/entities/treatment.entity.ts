@@ -43,6 +43,14 @@ export class Treatment {
   @Column({ type: 'text', nullable: true })
   observations?: string; // "Observaciones"
 
+  @Column({ type: 'json', nullable: true })
+  medications?: {
+    nombre: string;
+    dosis: string;
+    frecuencia: string;
+    duracion: string;
+  }[];
+
   @CreateDateColumn({ name: 'created_at', nullable: true })
   created_at?: Date | null;
 

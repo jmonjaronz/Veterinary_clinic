@@ -12,6 +12,8 @@ import {
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
+import { User } from 'src/features/users/entities/user.entity';
+import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
 
 @Entity({ name: 'medical_records' })
 export class MedicalRecord {
@@ -63,8 +65,8 @@ export class MedicalRecord {
   @Column({ type: 'text', nullable: true })
   note_next_application: string;
 
-  @Column({ type: 'date' })
-  appointment_date: Date;
+  @Column({ type: 'date', nullable: false })
+  appointment_date: string;
 
   // CAMPOS DE ANÁLISIS CLÍNICO
   @Column({ type: 'text', nullable: true })
@@ -146,4 +148,14 @@ export class MedicalRecord {
 
   @OneToMany('Treatment', 'medical_record')
   treatments: any[];
+
+  @Column({ nullable: true })
+  user_id: number;
+
+  @OneToMany(() => OpinionMedicalRecord, (opinionMedicalRecord) => opinionMedicalRecord.medical_record)
+  opinions: OpinionMedicalRecord[];
+
+  @ManyToOne(() => User, (user) => user.medicalRecords)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }

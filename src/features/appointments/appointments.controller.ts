@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
@@ -22,8 +23,9 @@ export class AppointmentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createAppointmentDto: CreateAppointmentDto) {
-    return this.appointmentsService.create(createAppointmentDto);
+  create(@Body() createAppointmentDto: CreateAppointmentDto, @Req() req) {
+    const user = req.user;
+    return this.appointmentsService.create(createAppointmentDto, user);
   }
 
   @UseGuards(JwtAuthGuard)

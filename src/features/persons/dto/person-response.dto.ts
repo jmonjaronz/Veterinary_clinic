@@ -1,4 +1,6 @@
 import { Expose, Type } from 'class-transformer';
+import { UserResponseDto } from 'src/features/users/dto/user-response.dto';
+import { User } from 'src/features/users/entities/user.entity';
 
 class PetShortResponseDto {
   @Expose() id: number;
@@ -20,6 +22,10 @@ export class PersonResponseDto {
   @Expose()
   @Type(() => PetShortResponseDto)
   pets: PetShortResponseDto[];
+
+  @Expose()
+  @Type(() => UserResponseDto)
+  users: UserResponseDto[];
 
   @Expose() created_at: Date | null;
   @Expose() updated_at: Date | null;

@@ -1,5 +1,27 @@
-import { IsOptional, IsNumber, IsDate, IsString, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsNumber,
+  IsDate,
+  IsString,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
+
+class MedicationDto {
+  @IsString({ message: 'El nombre del medicamento debe ser texto' })
+  nombre: string;
+
+  @IsString({ message: 'La dosis debe ser texto' })
+  dosis: string;
+
+  @IsString({ message: 'La frecuencia debe ser texto' })
+  frecuencia: string;
+
+  @IsString({ message: 'La duración debe ser texto' })
+  duracion: string;
+}
 
 export class UpdateTreatmentDto {
   @IsOptional()
@@ -30,6 +52,12 @@ export class UpdateTreatmentDto {
   @IsOptional()
   @IsString({ message: 'La duración debe ser una cadena de texto' })
   duration?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MedicationDto)
+  medications?: MedicationDto[];
 
   @IsOptional()
   @IsString({ message: 'Las observaciones deben ser una cadena de texto' })

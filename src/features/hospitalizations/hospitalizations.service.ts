@@ -28,6 +28,7 @@ export class HospitalizationsService {
 
   async create(
     createHospitalizationDto: CreateHospitalizationDto,
+    loggedUser: any,
   ): Promise<Hospitalization> {
     const { pet_id, veterinarian_id, reason, description, admission_date } =
       createHospitalizationDto;
@@ -85,6 +86,7 @@ export class HospitalizationsService {
       veterinarian_id,
       reason,
       description,
+      user_id: loggedUser.id,
       admission_date,
       discharge_date: createHospitalizationDto.discharge_date,
       treatment: createHospitalizationDto.treatment,
@@ -101,6 +103,7 @@ export class HospitalizationsService {
     const queryBuilder = this.hospitalizationRepository
       .createQueryBuilder('hosp')
       .leftJoinAndSelect('hosp.pet', 'pet')
+      .leftJoinAndSelect('hosp.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('hosp.veterinarian', 'veterinarian');
 
@@ -476,4 +479,76 @@ export class HospitalizationsService {
 
     return await this.hospitalizationRepository.save(hospitalization);
   }
+
+  async saveFiles(
+    id: number,
+    newFilePaths: string[],
+  ): Promise<Hospitalization> {
+    const record = await this.hospitalizationRepository.findOne({
+      where: { id },
+    });
+    if (!record) {
+      throw new NotFoundException('Registro de hospitalización no encontrado');
+    }
+
+    const existingFiles = record.route_pdf ? record.route_pdf.split(',') : [];
+
+    // Concatenar los nuevos archivos
+    const updatedFiles = [...existingFiles, ...newFilePaths];
+    record.route_pdf = updatedFiles.join(',');
+
+    return await this.hospitalizationRepository.save(record);
+  }
+
+  async removeFile(id: number, filePath: string): Promise<Hospitalization> {
+  const record = await this.hospitalizationRepository.findOne({
+    where: { id },
+  });
+  if (!record) {
+    throw new NotFoundException('Registro de hospitalización no encontrado');
+  }
+
+  // Archivos guardados en BD
+  const files = record.route_pdf ? record.route_pdf.split(',') : [];
+
+  // Tomamos siempre el basename (ej: "archivo.jpg")
+  const baseNameToDelete = path.basename(filePath);
+
+  // Buscar si existe en los guardados, ya sea nombre o ruta
+  const fileToDelete = files.find(
+    (f) =>
+      f === filePath ||               // coincide ruta completa exacta
+      path.normalize(f) === path.normalize(filePath) || // normaliza slashes
+      path.basename(f) === baseNameToDelete             // coincide solo nombre
+  );
+
+  if (!fileToDelete) {
+    throw new NotFoundException(
+      `El archivo ${filePath} no está registrado en este expediente`,
+    );
+  }
+
+  // Construir la ruta absoluta real en disco
+  const fullPath = path.isAbsolute(fileToDelete)
+    ? fileToDelete
+    : path.join(process.cwd(), fileToDelete);
+
+  // Verificar si existe y eliminar
+  if (fs.existsSync(fullPath)) {
+    fs.unlinkSync(fullPath);
+  } else {
+    console.warn(`⚠️ Archivo no encontrado en disco: ${fullPath}`);
+  }
+
+  // Actualizar BD quitando el archivo
+  const updatedFiles = files.filter(
+    (f) =>
+      f !== filePath &&
+      path.normalize(f) !== path.normalize(filePath) &&
+      path.basename(f) !== baseNameToDelete,
+  );
+  record.route_pdf = updatedFiles.join(',');
+
+  return await this.hospitalizationRepository.save(record);
+}
 }
