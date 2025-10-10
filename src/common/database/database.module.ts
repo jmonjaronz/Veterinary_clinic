@@ -24,6 +24,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
           entities: [__dirname + '/../../**/*.entity{.ts,.js}'],
 
+          timezone: '-05:00', // 🇵🇪 Fuerza hora local de Perú
+          extra: {
+            options: '-c timezone=America/Lima', // 🇵🇪
+          },
           // Solo sincroniza en desarrollo
           synchronize: !isProduction,
 
@@ -32,7 +36,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           migrationsRun: isProduction,
 
           // Opcional: solo muestra logs en desarrollo
-         // logging: !isProduction,
+          // logging: !isProduction,
         };
       },
     }),

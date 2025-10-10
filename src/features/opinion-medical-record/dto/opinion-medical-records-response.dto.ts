@@ -1,4 +1,5 @@
 import { Expose, Type } from 'class-transformer';
+import { UserResponseDto } from 'src/features/users/dto/user-response.dto';
 
 export class OpinionResponseDto {
   @Expose()
@@ -18,6 +19,10 @@ export class OpinionResponseDto {
 
   @Expose()
   comment: string;
+
+  @Expose()
+  @Type(() => UserResponseDto)
+  user?: UserResponseDto;
 
   @Expose()
   observations?: string;

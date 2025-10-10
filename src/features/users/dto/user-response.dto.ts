@@ -1,4 +1,5 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { PersonResponseDto } from 'src/features/persons/dto/person-response.dto';
 
 export class UserResponseDto {
   @Expose()
@@ -18,4 +19,8 @@ export class UserResponseDto {
 
   @Expose()
   deletedAt?: Date | null;
+
+  @Expose()
+  @Type(() => PersonResponseDto)
+  person?: PersonResponseDto;
 }

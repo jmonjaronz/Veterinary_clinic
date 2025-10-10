@@ -48,11 +48,15 @@ export class TreatmentsService {
       observations_contains,
     } = filter;
 
-    const query = this.treatmentRepository
-      .createQueryBuilder('treatment')
-      .leftJoinAndSelect('treatment.medical_record', 'medical_record')
-      .leftJoinAndSelect('medical_record.pet', 'pet')
-      .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian');
+const query = this.treatmentRepository
+  .createQueryBuilder('treatment')
+  .leftJoinAndSelect('treatment.medical_record', 'medical_record')
+  .leftJoinAndSelect('medical_record.pet', 'pet')
+  .leftJoinAndSelect('pet.owner', 'owner')
+  .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
+  .leftJoinAndSelect('medical_record.opinions', 'opinions')
+  .leftJoinAndSelect('opinions.user', 'user')
+  .leftJoinAndSelect('user.person', 'person');
 
     if (medical_record_id)
       query.andWhere('treatment.medical_record_id = :medical_record_id', {

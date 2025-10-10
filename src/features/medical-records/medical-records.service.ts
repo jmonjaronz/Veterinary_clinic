@@ -21,6 +21,7 @@ import { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 import { fieldsToUpdate } from './entities/medical-record-update.entitiy';
 import * as path from 'path';
 import * as fs from 'fs';
+import { TreatmentResponseDto } from '../treatments/dto/treatments-response.dto';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -521,19 +522,11 @@ export class MedicalRecordsService {
     fechaInicio?: string,
     fechaFin?: string,
   ): Promise<PetCompleteHistoryDto> {
-    // Valores por defecto: primer y último día del mes actual
+    // ==== Fechas por defecto ====
     const now = new Date();
-    const startOfMonth = this.normalizeDate(
-      new Date(now.getFullYear(), now.getMonth(), 1),
-    );
-    const endOfMonth = this.normalizeDate(
-      new Date(now.getFullYear(), now.getMonth() + 1, 0),
-      true,
-    );
-    const defaultStart = this.normalizeDate(new Date(2024, 0, 1)); // Enero = 0
+    const defaultStart = this.normalizeDate(new Date(2024, 0, 1));
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
     const defaultEnd = this.normalizeDate(tomorrow, true);
 
     const inicio = fechaInicio
@@ -543,7 +536,7 @@ export class MedicalRecordsService {
       ? this.normalizeDate(new Date(fechaFin), true)
       : defaultEnd;
 
-    // Verificar si la mascota existe
+    // ==== Verificar mascota ====
     const pet = await this.petRepository.findOne({
       where: { id: petId },
       relations: ['owner', 'species'],
@@ -553,7 +546,7 @@ export class MedicalRecordsService {
       throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
     }
 
-    // Registros médicos
+    // ==== Registros médicos ====
     const medicalRecords = await this.medicalRecordRepository.find({
       where: {
         pet_id: petId,
@@ -562,32 +555,42 @@ export class MedicalRecordsService {
           fin.toISOString().split('T')[0],
         ),
       },
-      relations: ['veterinarian', 'appointment', 'treatments'],
+      relations: [
+        'veterinarian',
+        'appointment',
+        'treatments',
+        'opinions',
+        'opinions.user',
+        'opinions.user.person',
+        'pet',
+        'pet.owner',
+        'user',
+      ],
       order: { appointment_date: 'DESC' },
     });
 
-    // Citas
+    const medicalRecordsResponse = plainToInstance(
+      MedicalRecordResponseDto,
+      medicalRecords,
+      { excludeExtraneousValues: true },
+    );
+
+    // ==== Citas ====
     const appointments = await this.appointmentRepository.find({
-      where: {
-        pet_id: petId,
-        date: Between(inicio, fin),
-      },
+      where: { pet_id: petId, date: Between(inicio, fin) },
       relations: ['veterinarian'],
       order: { date: 'DESC' },
     });
 
-    // Hospitalizaciones
+    // ==== Hospitalizaciones ====
     const hospitalizations = await this.hospitalizationRepository.find({
-      where: {
-        pet_id: petId,
-        admission_date: Between(inicio, fin),
-      },
+      where: { pet_id: petId, admission_date: Between(inicio, fin) },
       relations: ['veterinarian'],
       order: { admission_date: 'DESC' },
     });
 
-    // Tratamientos
-    const treatments = await this.treatmentRepository
+    // ==== Tratamientos ====
+    const treatmentsRaw = await this.treatmentRepository
       .createQueryBuilder('treatment')
       .innerJoin('treatment.medical_record', 'mr')
       .where('mr.pet_id = :petId', { petId })
@@ -597,7 +600,13 @@ export class MedicalRecordsService {
       .orderBy('treatment.date', 'DESC')
       .getMany();
 
-    // Vacunas (status = completado)
+    const treatmentsResponse = plainToInstance(
+      TreatmentResponseDto,
+      treatmentsRaw,
+      { excludeExtraneousValues: true },
+    );
+
+    // ==== Vacunaciones ====
     const vaccinations = await this.vaccinationRecordRepository
       .createQueryBuilder('vr')
       .innerJoin('vr.vaccination_plan', 'vp')
@@ -610,22 +619,23 @@ export class MedicalRecordsService {
       .orderBy('vr.administered_date', 'DESC')
       .getMany();
 
-    // Timeline
+    // ==== Timeline ====
     const timeline = this.createTimelineFromRecords(
-      medicalRecords,
+      medicalRecordsResponse,
       appointments,
       hospitalizations,
-      treatments,
+      treatmentsResponse,
       vaccinations,
       inicio,
       fin,
     );
 
-    return {
-      medical_records: medicalRecords,
+    // ==== Retorno final ====
+    const petHistory: PetCompleteHistoryDto = {
+      medical_records: medicalRecordsResponse,
       appointments,
       hospitalizations,
-      treatments,
+      treatments: treatmentsResponse,
       vaccinations,
       pet_info: {
         id: pet.id,
@@ -637,64 +647,64 @@ export class MedicalRecordsService {
       },
       timeline,
     };
+
+    return petHistory;
   }
 
   private createTimelineFromRecords(
-    medicalRecords: MedicalRecord[],
+    medicalRecords: MedicalRecordResponseDto[],
     appointments: Appointment[],
     hospitalizations: Hospitalization[],
-    treatments: Treatment[],
+    treatments: TreatmentResponseDto[],
     vaccinations: VaccinationRecord[],
     inicio: Date,
     fin: Date,
-  ): Array<{
-    id: string;
-    type:
-      | 'medical_record'
-      | 'appointment'
-      | 'hospitalization'
-      | 'treatment'
-      | 'vaccination';
-    date: Date;
-    description: string;
-    veterinarian?: string;
-    status?: string;
-  }> {
-    const timeline: Array<{
-      id: string;
-      type:
-        | 'medical_record'
-        | 'appointment'
-        | 'hospitalization'
-        | 'treatment'
-        | 'vaccination';
-      date: Date;
-      description: string;
-      veterinarian?: string;
-      status?: string;
-    }> = [];
+  ): PetCompleteHistoryDto['timeline'] {
+    const timeline: PetCompleteHistoryDto['timeline'] = [];
 
-    // Helper para verificar si fecha está en rango
     const inRange = (date: Date | string | null | undefined): boolean => {
       if (!date) return false;
       const d = new Date(date);
       return d >= inicio && d <= fin;
     };
 
-    // Registros médicos
+    // === Registros médicos + Opiniones ===
     medicalRecords.forEach((record) => {
       if (record.appointment_date && inRange(record.appointment_date)) {
         timeline.push({
           id: `mr_${record.id}`,
           type: 'medical_record',
           date: new Date(record.appointment_date),
-          description: `Diagnóstico: ${record.diagnosis}`,
+          description: `Diagnóstico: ${record.diagnosis || 'Sin diagnóstico'}`,
           veterinarian: record.veterinarian?.full_name,
+        });
+      }
+
+      // Opiniones asociadas al registro
+      if (record.opinions?.length) {
+        record.opinions.forEach((opinion) => {
+          if (inRange(opinion.created_at)) {
+            const petName = record.pet?.name ?? 'Sin nombre';
+            const ownerName = record.pet?.owner?.full_name ?? 'Sin propietario';
+            const userName =
+              opinion.user?.person?.full_name ?? 'Usuario no especificado';
+
+            timeline.push({
+              id: `opn_${opinion.id}`,
+              type: 'opinion',
+              date: new Date(opinion.created_at),
+              description:
+                `Opinión: ${opinion.comment || 'Sin comentario'}` +
+                `\nMascota: ${petName}` +
+                `\nPropietario: ${ownerName}`,
+              veterinarian: userName,
+            });
+          }
         });
       }
     });
 
-    // Citas
+    // === Citas ===
     appointments.forEach((appointment) => {
       if (appointment.date && inRange(appointment.date)) {
         timeline.push({
@@ -708,7 +718,7 @@ export class MedicalRecordsService {
       }
     });
 
-    // Hospitalizaciones
+    // === Hospitalizaciones ===
     hospitalizations.forEach((hospitalization) => {
       if (
         hospitalization.admission_date &&
@@ -718,44 +728,45 @@ export class MedicalRecordsService {
           id: `hosp_${hospitalization.id}`,
           type: 'hospitalization',
           date: new Date(hospitalization.admission_date),
-          description: `Hospitalización: ${hospitalization.reason}`,
+          description: `Hospitalización: ${hospitalization.reason || 'Sin motivo'}`,
           veterinarian: hospitalization.veterinarian?.full_name,
           status: hospitalization.discharge_date ? 'Alta' : 'En curso',
         });
       }
     });
 
-    // Tratamientos
+    // === Tratamientos ===
     treatments.forEach((treatment) => {
       if (treatment.date && inRange(treatment.date)) {
         timeline.push({
           id: `treat_${treatment.id}`,
           type: 'treatment',
           date: new Date(treatment.date),
-          description: `Tratamiento: ${treatment.description}`,
+          description: `Tratamiento: ${treatment.description || 'Sin descripción'}`,
           veterinarian: treatment.medical_record?.veterinarian?.full_name,
         });
       }
     });
 
-    // Vacunas
+    // === Vacunas ===
     vaccinations.forEach((vaccination) => {
       if (vaccination.created_at && inRange(vaccination.created_at)) {
         timeline.push({
           id: `vac_${vaccination.id}`,
           type: 'vaccination',
           date: new Date(vaccination.created_at),
-          description: `Vacuna aplicada: ${vaccination.vaccine?.name || 'Vacuna'}`,
+          description: `Vacuna aplicada: ${
+            vaccination.vaccine?.name || 'Vacuna'
+          }`,
           status: vaccination.status,
         });
       }
     });
 
-    // Ordenar timeline
-    return timeline.sort((a, b) => {
-      if (!a.date || !b.date) return 0;
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
+    // === Ordenar del más reciente al más antiguo ===
+    return timeline.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
   }
 
   async saveFiles(id: number, newFilePaths: string[]): Promise<MedicalRecord> {
@@ -778,54 +789,54 @@ export class MedicalRecordsService {
   }
 
   async removeFile(id: number, filePath: string): Promise<MedicalRecord> {
-  const record = await this.medicalRecordRepository.findOne({
-    where: { id },
-  });
-  if (!record) {
-    throw new NotFoundException('Registro médico no encontrado');
-  }
+    const record = await this.medicalRecordRepository.findOne({
+      where: { id },
+    });
+    if (!record) {
+      throw new NotFoundException('Registro médico no encontrado');
+    }
 
-  // Archivos guardados (con rutas relativas o absolutas)
-  const files = record.route_files ? record.route_files.split(',') : [];
+    // Archivos guardados (con rutas relativas o absolutas)
+    const files = record.route_files ? record.route_files.split(',') : [];
 
-  // Tomamos siempre el basename (ej: "archivo.pdf")
-  const baseNameToDelete = path.basename(filePath);
+    // Tomamos siempre el basename (ej: "archivo.pdf")
+    const baseNameToDelete = path.basename(filePath);
 
-  // Buscar coincidencia (ruta completa, normalizada o solo nombre)
-  const fileToDelete = files.find(
-    (f) =>
-      f === filePath ||
-      path.normalize(f) === path.normalize(filePath) ||
-      path.basename(f) === baseNameToDelete,
-  );
-
-  if (!fileToDelete) {
-    throw new NotFoundException(
-      `El archivo ${filePath} no está registrado en este expediente`,
+    // Buscar coincidencia (ruta completa, normalizada o solo nombre)
+    const fileToDelete = files.find(
+      (f) =>
+        f === filePath ||
+        path.normalize(f) === path.normalize(filePath) ||
+        path.basename(f) === baseNameToDelete,
     );
+
+    if (!fileToDelete) {
+      throw new NotFoundException(
+        `El archivo ${filePath} no está registrado en este expediente`,
+      );
+    }
+
+    // Construir ruta absoluta real
+    const fullPath = path.isAbsolute(fileToDelete)
+      ? fileToDelete
+      : path.join(process.cwd(), fileToDelete);
+
+    // Verificar si existe en disco y eliminar
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    } else {
+      console.warn(`⚠️ Archivo no encontrado en disco: ${fullPath}`);
+    }
+
+    // Actualizar BD quitando el archivo eliminado
+    const updatedFiles = files.filter(
+      (f) =>
+        f !== filePath &&
+        path.normalize(f) !== path.normalize(filePath) &&
+        path.basename(f) !== baseNameToDelete,
+    );
+    record.route_files = updatedFiles.join(',');
+
+    return await this.medicalRecordRepository.save(record);
   }
-
-  // Construir ruta absoluta real
-  const fullPath = path.isAbsolute(fileToDelete)
-    ? fileToDelete
-    : path.join(process.cwd(), fileToDelete);
-
-  // Verificar si existe en disco y eliminar
-  if (fs.existsSync(fullPath)) {
-    fs.unlinkSync(fullPath);
-  } else {
-    console.warn(`⚠️ Archivo no encontrado en disco: ${fullPath}`);
-  }
-
-  // Actualizar BD quitando el archivo eliminado
-  const updatedFiles = files.filter(
-    (f) =>
-      f !== filePath &&
-      path.normalize(f) !== path.normalize(filePath) &&
-      path.basename(f) !== baseNameToDelete,
-  );
-  record.route_files = updatedFiles.join(',');
-
-  return await this.medicalRecordRepository.save(record);
-}
 }

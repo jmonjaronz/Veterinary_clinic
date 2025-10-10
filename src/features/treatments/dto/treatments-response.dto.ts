@@ -23,6 +23,8 @@ export class TreatmentResponseDto {
 
   @Expose() observations: string;
 
+   @Expose() medications: string;
+
   @Expose() created_at: Date;
 
   @Expose() updatedAt: Date;

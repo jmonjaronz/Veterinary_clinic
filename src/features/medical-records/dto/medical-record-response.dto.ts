@@ -66,6 +66,7 @@ export class MedicalRecordResponseDto {
   @Expose() clinical_signs: string;
   @Expose() blood_pressure: string;
   @Expose() presumptive_diagnosis: string;
+  @Expose() route_files: string;
   @Expose() recommended_tests: string;
   @Expose() definitive_diagnosis: string;
   @Expose() diet: string;
