@@ -5,14 +5,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // ConfigService estará disponible globalmente
+      isGlobal: true,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const isProduction =
-          configService.get<string>('NODE_ENV') === 'production';
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
         return {
           type: 'postgres',
@@ -24,18 +23,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
           entities: [__dirname + '/../../**/*.entity{.ts,.js}'],
 
-          timezone: '-05:00', // 🇵🇪 Fuerza hora local de Perú
+          // 🔧 Configuración correcta para zona horaria Perú
+          // TypeORM no tiene `timezone` para Postgres, se hace así:
           extra: {
-            options: '-c timezone=America/Lima', // 🇵🇪
+            options: '-c timezone=America/Lima',
           },
-          // Solo sincroniza en desarrollo
+
+
           synchronize: !isProduction,
 
-          // Ejecutar migraciones automáticamente en producción
+ 
           migrations: [__dirname + '/../migrations/*{.ts,.js}'],
           migrationsRun: isProduction,
 
-          // Opcional: solo muestra logs en desarrollo
           // logging: !isProduction,
         };
       },

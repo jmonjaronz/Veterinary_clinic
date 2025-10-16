@@ -39,9 +39,14 @@ export class CreateMedicalRecordDto {
   care_type?: string;
 
   @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: 'La fecha de siguiente aplicación debe ser válida' })
-  date_next_application?: Date;
+  @IsDateString(
+    {},
+    {
+      message:
+        'La fecha siguiente de la cita debe tener formato válido YYYY-MM-DD',
+    },
+  )
+  date_next_application?: string;
 
   @IsOptional()
   @IsString({ message: 'La nota de siguiente aplicación debe ser una cadena' })

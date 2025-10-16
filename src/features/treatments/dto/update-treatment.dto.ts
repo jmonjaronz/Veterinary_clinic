@@ -42,6 +42,14 @@ export class UpdateTreatmentDto {
   description?: string;
 
   @IsOptional()
+  @IsString({ message: 'La temperatura debe ser una cadena de texto' })
+  temperature?: string;
+
+  @IsOptional()
+  @IsString({ message: 'La presión arterial debe ser una cadena de texto' })
+  blood_pressure?: string;
+
+  @IsOptional()
   @IsString({ message: 'La dosis debe ser una cadena de texto' })
   dose?: string;
 

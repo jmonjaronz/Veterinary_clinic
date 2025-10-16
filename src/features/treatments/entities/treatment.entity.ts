@@ -43,6 +43,12 @@ export class Treatment {
   @Column({ type: 'text', nullable: true })
   observations?: string; // "Observaciones"
 
+  @Column({ type: 'text', nullable: true })
+  blood_pressure: string; // Presión arterial
+
+  @Column({ type: 'text', nullable: true })
+  temperature: string; // Temperatura corporal (°C)
+
   @Column({ type: 'json', nullable: true })
   medications?: {
     nombre: string;

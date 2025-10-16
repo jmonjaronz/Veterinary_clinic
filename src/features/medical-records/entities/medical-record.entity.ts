@@ -59,8 +59,8 @@ export class MedicalRecord {
   @Column({ type: 'text', nullable: true })
   care_type: string;
 
-  @Column({ type: 'text', nullable: true })
-  date_next_application: Date;
+  @Column({ type: 'date', nullable: true })
+  date_next_application: string | null;
 
   @Column({ type: 'text', nullable: true })
   note_next_application: string;
@@ -152,7 +152,10 @@ export class MedicalRecord {
   @Column({ nullable: true })
   user_id: number;
 
-  @OneToMany(() => OpinionMedicalRecord, (opinionMedicalRecord) => opinionMedicalRecord.medical_record)
+  @OneToMany(
+    () => OpinionMedicalRecord,
+    (opinionMedicalRecord) => opinionMedicalRecord.medical_record,
+  )
   opinions: OpinionMedicalRecord[];
 
   @ManyToOne(() => User, (user) => user.medicalRecords)

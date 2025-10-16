@@ -46,6 +46,14 @@ export class TreatmentFilterDto {
 
   @IsOptional()
   @IsString()
+  temperature?: string;
+
+  @IsOptional()
+  @IsString()
+  blood_pressure?: string;
+
+  @IsOptional()
+  @IsString()
   duration_contains?: string;
 
   @IsOptional()

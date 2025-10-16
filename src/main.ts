@@ -2,15 +2,22 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+import { TimezoneInterceptor } from './timezone.interceptor';
+
+// 🇵🇪 === Cargar variables de entorno antes de iniciar ===
+dotenv.config();
+
+// 🇵🇪 === Forzar zona horaria global a la del .env ===
+process.env.TZ = process.env.TZ || 'America/Lima';
 
 async function bootstrap() {
-  // Crear específicamente una aplicación NestExpressApplication para acceder a métodos específicos de Express
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Configuración global de validación
+  // Validación global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -20,35 +27,30 @@ async function bootstrap() {
     }),
   );
 
-  // Habilitar CORS
   app.enableCors();
-
-  // Prefijo global para todas las rutas
   app.setGlobalPrefix('api/v1');
 
-  // Asegurarse de que los directorios de uploads existen
+  // Crear directorios de uploads si no existen
   const uploadDirs = [
     join(__dirname, '..', 'uploads/pets'),
     join(__dirname, '..', 'uploads/consents'),
   ];
-
-  // Crear cada directorio si no existe
   uploadDirs.forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   });
 
-  // Configurar archivos estáticos para servir las imágenes y documentos
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
 
+
+  app.useGlobalInterceptors(new TimezoneInterceptor());
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
 
   await app.listen(port);
 
-  console.log(`La aplicación está escuchando en: ${await app.getUrl()}`);
+  console.log(`🚀 Aplicación corriendo en: ${await app.getUrl()}`);
+  console.log(`🕓 Zona horaria activa: ${process.env.TZ}`);
+  console.log(`📅 Fecha actual: ${new Date()}`);
 }
+
 bootstrap();
