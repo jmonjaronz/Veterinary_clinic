@@ -21,7 +21,7 @@ export class TimezoneInterceptor implements NestInterceptor {
     if (obj instanceof Date) {
       return moment(obj)
         .tz('America/Lima')
-        .format('YYYY-MM-DD HH:mm:ss'); // 👉 convierte a hora Perú
+        .format('YYYY-MM-DD HH:mm:ss');
     }
 
     if (Array.isArray(obj)) {
