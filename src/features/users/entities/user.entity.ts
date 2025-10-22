@@ -28,7 +28,7 @@ export class User {
   @JoinColumn({ name: 'person_id' })
   person: Person;
 
-  @Column({ unique: true })
+  @Column({ unique: false })
   user_type: string;
 
   @Column({ select: false })

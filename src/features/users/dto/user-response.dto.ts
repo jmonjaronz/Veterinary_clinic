@@ -8,6 +8,7 @@ export class UserResponseDto {
   @Expose()
   user_type: string;
 
+
   @Expose({ name: 'person_id' })
   person_id: string;
 

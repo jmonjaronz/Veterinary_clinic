@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,18 +11,101 @@ import { Person } from './entities/person.entity';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class PersonsService {
-  constructor(
+constructor(
     @InjectRepository(Person)
-    private personRepository: Repository<Person>,
-  ) {}
+    private readonly personRepository: Repository<Person>,
 
-  async create(createPersonDto: CreatePersonDto): Promise<Person> {
-    const person = this.personRepository.create(createPersonDto);
-    return this.personRepository.save(person);
+    // 👇 ESTA ES LA PARTE CLAVE
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
+  ) {}
+/** 🔹 Crear persona y, si es STAFF, crearle usuario automáticamente (solo si no existe ni está eliminado) */
+async create(createPersonDto: CreatePersonDto): Promise<Person> {
+  // Crear y guardar la persona
+  const person = this.personRepository.create(createPersonDto);
+  const savedPerson = await this.personRepository.save(person);
+
+  // Solo si el rol es STAFF
+  if (savedPerson.role === 'staff') {
+    try {
+      // Validar datos mínimos
+      if (!savedPerson.dni || !savedPerson.full_name) {
+        console.warn(
+          `⚠️ No se puede crear usuario staff: falta nombre o DNI para ${savedPerson.full_name || '(sin nombre)'}.`,
+        );
+        return savedPerson;
+      }
+
+      // Buscar usuario existente (activo o eliminado)
+      const existingUser = await this.usersService.findByUsername(savedPerson.dni);
+
+      // ⚠️ Si ya existe (activo o eliminado), no crear otro
+      if (existingUser) {
+        console.log(
+          `⚠️ El usuario staff ya existe para ${savedPerson.full_name} (person_id: ${savedPerson.id}). No se creará otro, estado: ${
+            existingUser.deletedAt ? 'ELIMINADO' : 'ACTIVO'
+          }`,
+        );
+        return savedPerson;
+      }
+
+      // ✅ Si no existe ningún usuario → crear usuario nuevo
+      const cleanName = savedPerson.full_name.replace(/\s+/g, '').toLowerCase();
+      const password = `${cleanName}${savedPerson.dni}`;
+
+      await this.usersService.create({
+        person_id: savedPerson.id,
+        user_type: savedPerson.dni,        // 👈 corregido (no debe ser el DNI)
+        password,                  // UsersService se encarga de hashear internamente
+      });
+
+      console.log(
+        `✅ Usuario staff creado automáticamente para ${savedPerson.full_name} (user_type: staff, username: ${savedPerson.dni}, password: ${password})`,
+      );
+    } catch (error) {
+      console.error(
+        '⚠️ Error al crear usuario staff automático:',
+        error?.message || error,
+      );
+
+      // 🧠 Si el error dice "no encontrado", intentar crearlo directamente
+      if (
+        error?.message?.toLowerCase().includes('no encontrado') ||
+        error?.message?.toLowerCase().includes('not found')
+      ) {
+        try {
+          const cleanName = savedPerson.full_name.replace(/\s+/g, '').toLowerCase();
+          const password = `${savedPerson.dni}`;
+
+          await this.usersService.create({
+            person_id: savedPerson.id,
+            user_type: savedPerson.dni,
+            password,
+          });
+
+          console.log(
+            `✅ Usuario staff creado tras detección de error previo para ${savedPerson.full_name} (username: ${savedPerson.dni})`,
+          );
+        } catch (err2) {
+          console.error('❌ Falló la creación de usuario tras el reintento:', err2);
+        }
+      }
+
+      return savedPerson;
+    }
   }
+
+  return savedPerson;
+}
+
+
+
+
 
   async findAll(filterDto?: PersonFilterDto) {
     // Usar un objeto por defecto si filterDto es undefined
