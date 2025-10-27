@@ -4,6 +4,8 @@ import {
   IsDate,
   IsString,
   IsBoolean,
+  IsDateString,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,18 +41,25 @@ export class UpdateMedicalRecordDto {
   care_type?: string; // Ej: "Vacuna", "Antiparasitario", "Antigarrapatas"
 
   @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: 'La fecha de siguiente aplicación debe ser válida' })
-  date_next_application?: Date; // Ej: "2025-08-12"
+  @IsDateString(
+    {},
+    {
+      message:
+        'La fecha siguiente de la cita debe tener formato válido YYYY-MM-DD',
+    },
+  )
+  date_next_application?: string;
 
   @IsOptional()
   @IsString({ message: 'La nota de siguiente aplicación debe ser una cadena' })
-  note_next_application?: string; // Ej: "Aplicar antes del viaje"
+  note_next_application?: string;
 
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: 'La fecha de la cita debe ser válida' })
-  appointment_date?: string; // Ej: "2025-07-30"
+  @IsNotEmpty({ message: 'La fecha de la cita es requerida' })
+  @IsDateString(
+    {},
+    { message: 'La fecha de la cita debe tener formato válido YYYY-MM-DD' },
+  )
+  appointment_date: string; // <-- string (no String, ni Date)
 
   // Medicamentos y observaciones
   @IsOptional()
@@ -83,15 +92,21 @@ export class UpdateMedicalRecordDto {
   heart_rate?: string; // Ej: "90 lpm"
 
   @IsOptional()
-  @IsString({ message: 'La frecuencia respiratoria debe ser una cadena de texto' })
+  @IsString({
+    message: 'La frecuencia respiratoria debe ser una cadena de texto',
+  })
   breathing_frequency?: string; // Ej: "20 rpm"
 
   @IsOptional()
-  @IsString({ message: 'El tiempo de llenado capilar debe ser una cadena de texto' })
+  @IsString({
+    message: 'El tiempo de llenado capilar debe ser una cadena de texto',
+  })
   capillary_refill_time?: string; // Ej: "2 segundos"
 
   @IsOptional()
-  @IsString({ message: 'El estado de las mucosas debe ser una cadena de texto' })
+  @IsString({
+    message: 'El estado de las mucosas debe ser una cadena de texto',
+  })
   mucous?: string; // Ej: "Rosadas"
 
   // Reflejos (booleanos)
@@ -109,7 +124,9 @@ export class UpdateMedicalRecordDto {
 
   // Observaciones generales
   @IsOptional()
-  @IsString({ message: 'La palpación de linfonódulos debe ser una cadena de texto' })
+  @IsString({
+    message: 'La palpación de linfonódulos debe ser una cadena de texto',
+  })
   lymph_nodes?: string;
 
   @IsOptional()
@@ -121,7 +138,9 @@ export class UpdateMedicalRecordDto {
   nutritional_state?: string; // Ej: "Obeso", "Desnutrido"
 
   @IsOptional()
-  @IsString({ message: 'El estado de hidratación debe ser una cadena de texto' })
+  @IsString({
+    message: 'El estado de hidratación debe ser una cadena de texto',
+  })
   hydration_state?: string; // Ej: "Normal", "Deshidratado"
 
   @IsOptional()
@@ -129,7 +148,9 @@ export class UpdateMedicalRecordDto {
   pain_level?: string; // Ej: "Moderado", "Severo"
 
   @IsOptional()
-  @IsString({ message: 'La intensidad del prurito debe ser una cadena de texto' })
+  @IsString({
+    message: 'La intensidad del prurito debe ser una cadena de texto',
+  })
   itch_intensity?: string; // Ej: "Ligero", "Intenso"
 
   @IsOptional()
@@ -141,15 +162,21 @@ export class UpdateMedicalRecordDto {
   blood_pressure?: string; // Ej: "120/80"
 
   @IsOptional()
-  @IsString({ message: 'El diagnóstico presuntivo debe ser una cadena de texto' })
+  @IsString({
+    message: 'El diagnóstico presuntivo debe ser una cadena de texto',
+  })
   presumptive_diagnosis?: string;
 
   @IsOptional()
-  @IsString({ message: 'Los exámenes auxiliares deben ser una cadena de texto' })
+  @IsString({
+    message: 'Los exámenes auxiliares deben ser una cadena de texto',
+  })
   recommended_tests?: string; // Ej: "Hemograma, radiografía"
 
   @IsOptional()
-  @IsString({ message: 'El diagnóstico definitivo debe ser una cadena de texto' })
+  @IsString({
+    message: 'El diagnóstico definitivo debe ser una cadena de texto',
+  })
   definitive_diagnosis?: string;
 
   @IsOptional()
