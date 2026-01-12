@@ -51,4 +51,13 @@ export class VaccinationPlanFilterDto {
     @IsOptional()
     @IsString()
     plan_name?: string;
+
+    // Filtros para el rango de fecha de vacuna programada
+    @IsOptional()
+    @IsString()
+    scheduled_date_start?: string;
+
+    @IsOptional()
+    @IsString()
+    scheduled_date_end?: string;
 }

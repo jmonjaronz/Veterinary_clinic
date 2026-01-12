@@ -281,6 +281,36 @@ export class AppointmentsService {
     return this.findAll(filters);
   }
 
+  async findByVeterinarianDateRange(
+    veterinarianId: number,
+    startDate: Date,
+    endDate: Date,
+    filterDto?: AppointmentFilterDto,
+  ): Promise<any> {
+    // Verificar si el veterinario existe
+    const veterinarian = await this.personRepository.findOne({
+      where: { id: veterinarianId },
+    });
+    if (!veterinarian) {
+      throw new NotFoundException(
+        `Persona con ID ${veterinarianId} no encontrada`,
+      );
+    }
+
+    // Crear una copia del filtro o uno nuevo si no hay
+    const filters = filterDto ? { ...filterDto } : new AppointmentFilterDto();
+
+    // Establecer el ID del veterinario en los filtros
+    filters.veterinarian_id = veterinarianId;
+
+    // Establecer el rango de fechas en los filtros
+    filters.date_start = startDate;
+    filters.date_end = endDate;
+
+    // Usar el método findAll con los filtros
+    return this.findAll(filters);
+  }
+
   async findUpcoming(filterDto?: AppointmentFilterDto): Promise<any> {
     // Crear una copia del filtro o uno nuevo si no hay
     const filters = filterDto ? { ...filterDto } : new AppointmentFilterDto();

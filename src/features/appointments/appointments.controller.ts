@@ -43,10 +43,19 @@ export class AppointmentsController {
     }
 
     if (veterinarianId) {
-      return this.appointmentsService.findByVeterinarian(
+      if (startDate && endDate) {
+        return this.appointmentsService.findByVeterinarianDateRange(
+          +veterinarianId,
+          new Date(startDate),
+          new Date(endDate),
+          filterDto,
+        );
+      }else{
+        return this.appointmentsService.findByVeterinarian(
         +veterinarianId,
         filterDto,
       );
+      }
     }
 
     if (status === 'upcoming') {

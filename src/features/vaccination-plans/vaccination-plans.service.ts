@@ -174,6 +174,19 @@ export class VaccinationPlansService {
         if (filters.plan_name) {
             queryBuilder.andWhere('svp.name LIKE :plan_name', { plan_name: `%${filters.plan_name}%` });
         }
+
+        // Filtros para el plan de vacunación por especie
+        // Filtros de fechas
+        if (filters.scheduled_date_start && filters.scheduled_date_end) {
+            queryBuilder.andWhere('records.scheduled_date BETWEEN :start AND :end', {
+                start: filters.scheduled_date_start,
+                end: filters.scheduled_date_end
+            });
+        } else if (filters.scheduled_date_start) {
+            queryBuilder.andWhere('records.scheduled_date >= :start', { start: filters.scheduled_date_start });
+        } else if (filters.scheduled_date_end) {
+            queryBuilder.andWhere('records.scheduled_date <= :end', { end: filters.scheduled_date_end });
+        }
         
         // Calcular skip para paginación
         const skip = (filters.page - 1) * filters.per_page;
