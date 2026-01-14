@@ -12,6 +12,7 @@ interface JwtPayload {
   username: string;
   sub: number;
   id: number;
+  company_id: number;
   role: string;
 }
 
@@ -35,6 +36,7 @@ export class AuthService {
         .createQueryBuilder('user')
         .addSelect('user.hashed_password')
         .leftJoinAndSelect('user.person', 'person')
+        .leftJoinAndSelect('user.company', 'company')
         .where('user.user_type = :username', { username })
         .getOne();
 
@@ -80,6 +82,10 @@ export class AuthService {
       throw new UnauthorizedException('Usuario sin perfil asociado');
     }
 
+    if (!user.company) {
+      throw new UnauthorizedException('Usuario sin empresa asociada');
+    }
+
     const personRole = user.person.role || 'cliente';
     const personName = user.person.full_name || '';
 
@@ -87,6 +93,7 @@ export class AuthService {
       username: user.user_type,
       sub: user.id,
       id: user.id,
+      company_id: user.company.id,
       role: personRole,
     };
 
@@ -98,6 +105,14 @@ export class AuthService {
         personId: user.person_id,
         fullName: personName,
         role: personRole,
+      },
+      company: {
+        id: user.company.id,
+        name: user.company.name,
+        ruc: user.company.ruc,
+        email: user.company.email,
+        phone: user.company.phone_number,
+        address: user.company.address,
       },
     };
   }
