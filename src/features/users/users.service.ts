@@ -7,6 +7,7 @@ import { Person } from '../persons/entities/person.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserFilterDto } from './dto/user-filter.dto';
+import { Company } from '../companies/entities/company.entity';
 
 @Injectable()
 export class UsersService {
@@ -15,15 +16,31 @@ export class UsersService {
         private readonly userRepository: Repository<User>,
         @InjectRepository(Person)
         private readonly personRepository: Repository<Person>,
+        @InjectRepository(Company)
+        private readonly companyRepository: Repository<Company>,
     ) {}
 
     async create(createUserDto: CreateUserDto): Promise<User> {
-        const { person_id, user_type, password } = createUserDto;
-    
+        const { person_id, company_id, user_type, password } = createUserDto;
+
         // Verificar si la persona existe
-        const person = await this.personRepository.findOne({ where: { id: person_id } });
+        const person = await this.personRepository.findOne({
+            where: { id: person_id },
+        });
         if (!person) {
-            throw new NotFoundException(`Persona con ID ${person_id} no encontrada`);
+            throw new NotFoundException(
+                `Persona con ID ${person_id} no encontrada`,
+            );
+        }
+
+        //Verrificar si la empresa existe
+        const company = await this.companyRepository.findOne({
+            where: { id: company_id },
+        });
+        if (!company) {
+            throw new NotFoundException(
+                `Empresa con ID ${company_id} no encontrada`,
+            );
         }
     
         // Verificar si ya existe un usuario con ese user_type
@@ -71,8 +88,9 @@ export class UsersService {
         // Construir la consulta con relaciones
         const queryBuilder = this.userRepository
             .createQueryBuilder('user')
-            .leftJoinAndSelect('user.person', 'person');
-        
+            .leftJoinAndSelect('user.person', 'person')
+            .leftJoinAndSelect('user.company', 'company');
+
         // Aplicar filtros
         if (user_type) {
             queryBuilder.andWhere('user.user_type LIKE :user_type', { user_type: `%${user_type}%` });
@@ -125,9 +143,9 @@ export class UsersService {
     }
 
     async findOne(id: number): Promise<User> {
-        const user = await this.userRepository.findOne({ 
+        const user = await this.userRepository.findOne({
             where: { id },
-            relations: ['person'],
+            relations: ['person', 'company'],
         });
 
         if (!user) {
