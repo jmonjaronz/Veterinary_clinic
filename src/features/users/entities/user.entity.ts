@@ -15,6 +15,7 @@ import { Appointment } from 'src/features/appointments/entities/appointment.enti
 import { Hospitalization } from 'src/features/hospitalizations/entities/hospitalization.entity';
 import { MedicalRecord } from 'src/features/medical-records/entities/medical-record.entity';
 import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
+import { Company } from 'src/features/companies/entities/company.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -49,6 +50,13 @@ export class User {
     (opinionMedicalRecord) => opinionMedicalRecord.medical_record,
   )
   opinions: OpinionMedicalRecord[];
+
+  @Column({ name: 'company_id', nullable: true })
+  companyId: number;
+
+  @ManyToOne(() => Company, (company) => company.users)
+  @JoinColumn({ name: 'company_id' })
+  company: Company;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;

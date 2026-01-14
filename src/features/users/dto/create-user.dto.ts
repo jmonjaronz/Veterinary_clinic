@@ -5,6 +5,9 @@ export class CreateUserDto {
   @IsNumber({}, { message: 'El ID de la persona debe ser un número' })
   person_id: number;
 
+  @IsNotEmpty({ message: 'El ID de la empresa es requerido' })
+  @IsNumber({}, { message: 'El ID de la empresa debe ser un número' }) 
+  company_id: number;
 
   @IsNotEmpty({ message: 'El tipo de usuario es requerido' })
   @IsString({ message: 'El tipo de usuario debe ser una cadena de texto' })
