@@ -10,10 +10,10 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
-import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { User } from 'src/features/users/entities/user.entity';
 import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
+import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
 
 @Entity({ name: 'medical_records' })
 export class MedicalRecord {
@@ -37,9 +37,16 @@ export class MedicalRecord {
   @Column()
   veterinarian_id: number;
 
-  @ManyToOne(() => Person)
+  @ManyToOne(() => Veterinarian)
   @JoinColumn({ name: 'veterinarian_id' })
-  veterinarian: Person;
+  veterinarian: Veterinarian;
+
+  @Column({ name: 'company_id' })
+  companyId: number;
+
+  @ManyToOne(() => Veterinarian)
+  @JoinColumn({ name: 'company_id' })
+  company: Veterinarian;
 
   @Column({ type: 'text' })
   diagnosis: string;

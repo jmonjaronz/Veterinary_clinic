@@ -9,8 +9,8 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
-import { Person } from '../../persons/entities/person.entity';
 import { User } from 'src/features/users/entities/user.entity';
+import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
 
 @Entity({ name: 'appointments' })
 export class Appointment {
@@ -30,9 +30,16 @@ export class Appointment {
   @Column()
   veterinarian_id: number;
 
-  @ManyToOne('Person')
+  @ManyToOne(() => Veterinarian)
   @JoinColumn({ name: 'veterinarian_id' })
-  veterinarian: Person;
+  veterinarian: Veterinarian;
+
+  @Column({ name: 'company_id' })
+  companyId: number;
+  
+  @ManyToOne(() => Veterinarian)
+  @JoinColumn({ name: 'company_id' })
+  company: Veterinarian;
 
   @Column()
   appointment_type: string; // control, emergencia, vacunación
