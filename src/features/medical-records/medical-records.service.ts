@@ -162,7 +162,7 @@ export class MedicalRecordsService {
     return this.medicalRecordRepository.save(medicalRecord);
   }
 
-  async findAll(filterDto?: MedicalRecordFilterDto) {
+  async findAll(companyId: number, filterDto?: MedicalRecordFilterDto) {
     // Usar un objeto por defecto si filterDto es undefined
     const filters = filterDto || new MedicalRecordFilterDto();
 
@@ -179,7 +179,8 @@ export class MedicalRecordsService {
       .leftJoinAndSelect('mr.opinions', 'opinions')
       .leftJoinAndSelect('mr.veterinarian', 'veterinarian')
       .leftJoinAndSelect('mr.treatments', 'treatments')
-      .leftJoinAndSelect('mr.appointment', 'appointment');
+      .leftJoinAndSelect('mr.appointment', 'appointment')
+      .where('user.company_id = :companyId', { companyId });
 
     // Aplicar filtros básicos
     if (filters.pet_id) {
@@ -304,9 +305,9 @@ export class MedicalRecordsService {
     };
   }
 
-  async findOne(id: number): Promise<MedicalRecord> {
+  async findOne(id: number, companyId: number): Promise<MedicalRecord> {
     const medicalRecord = await this.medicalRecordRepository.findOne({
-      where: { id },
+      where: { id: id, user: {companyId: companyId} },
       relations: [
         'pet',
         'user',
@@ -327,6 +328,7 @@ export class MedicalRecordsService {
 
   async findByPet(
     petId: number,
+    companyId: number,
     filterDto?: MedicalRecordFilterDto,
   ): Promise<any> {
     // Verificar si la mascota existe
@@ -345,11 +347,12 @@ export class MedicalRecordsService {
     filters.pet_id = petId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId,filters);
   }
 
   async findByVeterinarian(
     veterinarianId: number,
+    companyId: number,
     filterDto?: MedicalRecordFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
@@ -372,11 +375,12 @@ export class MedicalRecordsService {
     filters.veterinarian_id = veterinarianId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByAppointment(
     appointmentId: number,
+    companyId: number,
     filterDto?: MedicalRecordFilterDto,
   ): Promise<any> {
     // Verificar si la cita existe
@@ -397,14 +401,15 @@ export class MedicalRecordsService {
     filters.appointment_id = appointmentId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async update(
     id: number,
+    companyId: number,
     updateMedicalRecordDto: UpdateMedicalRecordDto,
   ): Promise<MedicalRecord> {
-    const medicalRecord = await this.findOne(id);
+    const medicalRecord = await this.findOne(id, companyId);
 
     // Validación: Cambio de mascota
     if (
@@ -501,12 +506,9 @@ export class MedicalRecordsService {
     return this.medicalRecordRepository.save(medicalRecord);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.medicalRecordRepository.softDelete(id);
-
-    if (result.affected === 0) {
-      throw new NotFoundException(`Registro médico con ID ${id} no encontrado`);
-    }
+  async remove(id: number, companyId: number): Promise<void> {
+    await this.findOne(id, companyId);
+    await this.medicalRecordRepository.softDelete(id);
   }
 
   private normalizeDate(date: Date, endOfDay = false): Date {
@@ -519,6 +521,7 @@ export class MedicalRecordsService {
 
   async getPetCompleteHistory(
     petId: number,
+    companyId: number,
     fechaInicio?: string,
     fechaFin?: string,
   ): Promise<PetCompleteHistoryDto> {
@@ -554,6 +557,9 @@ export class MedicalRecordsService {
           inicio.toISOString().split('T')[0],
           fin.toISOString().split('T')[0],
         ),
+        user: {
+          companyId: companyId,
+        }
       },
       relations: [
         'veterinarian',
@@ -577,15 +583,15 @@ export class MedicalRecordsService {
 
     // ==== Citas ====
     const appointments = await this.appointmentRepository.find({
-      where: { pet_id: petId, date: Between(inicio, fin) },
-      relations: ['veterinarian'],
+      where: { pet_id: petId, date: Between(inicio, fin), user: {companyId: companyId} },
+      relations: ['veterinarian', 'user'],
       order: { date: 'DESC' },
     });
 
     // ==== Hospitalizaciones ====
     const hospitalizations = await this.hospitalizationRepository.find({
-      where: { pet_id: petId, admission_date: Between(inicio, fin) },
-      relations: ['veterinarian'],
+      where: { pet_id: petId, admission_date: Between(inicio, fin), user: {companyId: companyId} },
+      relations: ['veterinarian', 'user'],
       order: { admission_date: 'DESC' },
     });
 
@@ -597,6 +603,8 @@ export class MedicalRecordsService {
       .andWhere('treatment.date BETWEEN :inicio AND :fin', { inicio, fin })
       .leftJoinAndSelect('treatment.medical_record', 'medical_record')
       .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
+      .leftJoin('medical_record.user', 'user')
+      .andWhere('user.company_id = :companyId', { companyId })
       .orderBy('treatment.date', 'DESC')
       .getMany();
 
@@ -769,9 +777,9 @@ export class MedicalRecordsService {
     );
   }
 
-  async saveFiles(id: number, newFilePaths: string[]): Promise<MedicalRecord> {
+  async saveFiles(id: number, newFilePaths: string[], companyId: number): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOne({
-      where: { id },
+      where: { id, user: {companyId: companyId} },
     });
     if (!record) {
       throw new NotFoundException('Registro médico no encontrado');
@@ -788,9 +796,9 @@ export class MedicalRecordsService {
     return await this.medicalRecordRepository.save(record);
   }
 
-  async removeFile(id: number, filePath: string): Promise<MedicalRecord> {
+  async removeFile(id: number, filePath: string, companyId: number): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOne({
-      where: { id },
+      where: { id, user: {companyId: companyId} },
     });
     if (!record) {
       throw new NotFoundException('Registro médico no encontrado');
