@@ -105,7 +105,7 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async findAll(filterDto?: AppointmentFilterDto) {
+  async findAll(companyId: number, filterDto?: AppointmentFilterDto) {
     // Usar un objeto por defecto si filterDto es undefined
     const filters = filterDto || new AppointmentFilterDto();
 
@@ -116,6 +116,9 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian');
+
+    // Filtro empresa
+    queryBuilder.where('user.company_id = :company_id', { company_id: companyId });
 
     // Aplicar filtros básicos de cita
     if (filters.pet_id) {
@@ -224,11 +227,19 @@ export class AppointmentsService {
     };
   }
 
-  async findOne(id: number): Promise<Appointment> {
-    const appointment = await this.appointmentRepository.findOne({
-      where: { id },
-      relations: ['pet', 'pet.owner', 'veterinarian'],
-    });
+  async findOne(id: number, companyId?: number): Promise<Appointment> {
+    const queryBuilder = this.appointmentRepository.createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.pet', 'pet')
+      .leftJoinAndSelect('appointment.user', 'user')
+      .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .where('appointment.id = :id', { id });
+    
+    if(companyId) {
+      queryBuilder.andWhere('user.company_id = :company_id', { company_id: companyId });
+    }
+
+    const appointment = await queryBuilder.getOne();
 
     if (!appointment) {
       throw new NotFoundException(`Cita con ID ${id} no encontrada`);
@@ -239,6 +250,7 @@ export class AppointmentsService {
 
   async findByPet(
     petId: number,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si la mascota existe
@@ -254,11 +266,12 @@ export class AppointmentsService {
     filters.pet_id = petId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByVeterinarian(
     veterinarianId: number,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
@@ -278,13 +291,14 @@ export class AppointmentsService {
     filters.veterinarian_id = veterinarianId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByVeterinarianDateRange(
     veterinarianId: number,
     startDate: Date,
     endDate: Date,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
@@ -308,10 +322,10 @@ export class AppointmentsService {
     filters.date_end = endDate;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
-  async findUpcoming(filterDto?: AppointmentFilterDto): Promise<any> {
+  async findUpcoming(companyId: number, filterDto?: AppointmentFilterDto): Promise<any> {
     // Crear una copia del filtro o uno nuevo si no hay
     const filters = filterDto ? { ...filterDto } : new AppointmentFilterDto();
 
@@ -320,7 +334,7 @@ export class AppointmentsService {
     filters.status = 'programada';
 
     // Usar el método findAll con los filtros, pero con un ordenamiento personalizado
-    const result = await this.findAll(filters);
+    const result = await this.findAll(companyId, filters);
 
     // El ordenamiento para citas próximas debe ser ASC por fecha
     const queryBuilder = this.appointmentRepository
@@ -356,6 +370,8 @@ export class AppointmentsService {
         pet_name: `%${filters.pet_name}%`,
       });
     }
+
+    queryBuilder.andWhere('user.company_id = :company_id', { company_id: companyId });
 
     // Calcular skip para paginación
     const skip = (filters.page - 1) * filters.per_page;
@@ -398,8 +414,9 @@ export class AppointmentsService {
   }
 
   async findByDateRange(
-    startDate: Date,
-    endDate: Date,
+    startDate: Date | string,
+    endDate: Date | string,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Crear una copia del filtro o uno nuevo si no hay
@@ -410,14 +427,15 @@ export class AppointmentsService {
     filters.date_end = endDate;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async update(
     id: number,
     updateAppointmentDto: UpdateAppointmentDto,
+    companyId: number
   ): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+    const appointment = await this.findOne(id, companyId);
 
     // Si se intenta cambiar la mascota, verificar que exista
     if (
@@ -491,8 +509,8 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async complete(id: number, document?: string): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+  async complete(id: number, companyId:number, document?: string): Promise<Appointment> {
+    const appointment = await this.findOne(id, companyId);
 
     if (appointment.status === 'completada') {
       throw new BadRequestException(`Esta cita ya está completada`);
@@ -510,8 +528,8 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async cancel(id: number): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+  async cancel(id: number, companyId: number): Promise<Appointment> {
+    const appointment = await this.findOne(id, companyId);
 
     if (appointment.status === 'completada') {
       throw new BadRequestException(`No se puede cancelar una cita completada`);
@@ -526,15 +544,13 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.appointmentRepository.softDelete(id);
-
-    if (result.affected === 0) {
-      throw new NotFoundException(`Cita con ID ${id} no encontrada`);
-    }
+  async remove(id: number, companyId: number): Promise<void> {
+    await this.findOne(id, companyId); 
+    await this.appointmentRepository.softDelete(id);
   }
 
   async findAppointmentsWithoutMedicalRecord(
+    companyId: number,
     correlative?: string,
     appointment_type?: string,
   ): Promise<Appointment[]> {
@@ -543,7 +559,11 @@ export class AppointmentsService {
       .leftJoin('medical_records', 'mr', 'mr.appointment_id = appointment.id')
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('appointment.user', 'user')
       .where('mr.id IS NULL'); // Solo las que no tienen atención
+    
+    // Filtro empresa
+    query.andWhere('user.company_id = :company_id', { company_id: companyId });
 
     if (correlative) {
       query.andWhere('UPPER(appointment.correlative) LIKE :correlative', {

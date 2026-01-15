@@ -16,6 +16,7 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentFilterDto } from './dto/appointment-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
 import { Appointment } from './entities/appointment.entity';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -32,6 +33,7 @@ export class AppointmentsController {
   @Get()
   findAll(
     @Query() filterDto: AppointmentFilterDto,
+    @CompanyId() companyId: number,
     @Query('pet_id') petId?: string,
     @Query('veterinarian_id') veterinarianId?: string,
     @Query('status') status?: string,
@@ -39,7 +41,7 @@ export class AppointmentsController {
     @Query('end_date') endDate?: string,
   ) {
     if (petId) {
-      return this.appointmentsService.findByPet(+petId, filterDto);
+      return this.appointmentsService.findByPet(+petId, companyId, filterDto);
     }
 
     if (veterinarianId) {
@@ -48,34 +50,38 @@ export class AppointmentsController {
           +veterinarianId,
           new Date(startDate),
           new Date(endDate),
+          companyId,
           filterDto,
         );
       }else{
         return this.appointmentsService.findByVeterinarian(
         +veterinarianId,
+        companyId,
         filterDto,
       );
       }
     }
 
     if (status === 'upcoming') {
-      return this.appointmentsService.findUpcoming(filterDto);
+      return this.appointmentsService.findUpcoming(companyId,filterDto);
     }
 
     if (startDate && endDate) {
       return this.appointmentsService.findByDateRange(
-        new Date(startDate),
-        new Date(endDate),
+        startDate,
+        endDate,
+        companyId,
         filterDto,
       );
     }
 
-    return this.appointmentsService.findAll(filterDto);
+    return this.appointmentsService.findAll(companyId, filterDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('without-medical-record')
   async findWithoutMedicalRecord(
+    @CompanyId() companyId: number,
     @Query('correlative') correlative?: string,
     @Query('appointment_type') appointment_type?: string,
     @Query('type') type?: string,
@@ -83,6 +89,7 @@ export class AppointmentsController {
     const finalType = appointment_type || type;
 
     return this.appointmentsService.findAppointmentsWithoutMedicalRecord(
+      companyId,
       correlative,
       finalType,
     );
@@ -90,34 +97,35 @@ export class AppointmentsController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.appointmentsService.findOne(+id);
+  findOne(@CompanyId() companyId: number, @Param('id') id: string) {
+    return this.appointmentsService.findOne(+id, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
+    @CompanyId() companyId: number,
     @Param('id') id: string,
     @Body() updateAppointmentDto: UpdateAppointmentDto,
   ) {
-    return this.appointmentsService.update(+id, updateAppointmentDto);
+    return this.appointmentsService.update(+id, updateAppointmentDto, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/complete')
-  complete(@Param('id') id: string, @Body('document') document?: string) {
-    return this.appointmentsService.complete(+id, document);
+  complete(@Param('id') id: string, @CompanyId() companyId: number, @Body('document') document?: string) {
+    return this.appointmentsService.complete(+id, companyId, document);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string) {
-    return this.appointmentsService.cancel(+id);
+  cancel(@CompanyId() companyId: number, @Param('id') id: string) {
+    return this.appointmentsService.cancel(+id, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.appointmentsService.remove(+id);
+  remove(@CompanyId() companyId: number, @Param('id') id: string) {
+    return this.appointmentsService.remove(+id, companyId);
   }
 }
