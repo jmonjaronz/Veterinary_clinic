@@ -8,11 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { Pet } from '../pets/entities/pet.entity';
-import { Person } from '../persons/entities/person.entity';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentFilterDto } from './dto/appointment-filter.dto';
 import { User } from '../users/entities/user.entity';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Injectable()
 export class AppointmentsService {
@@ -21,8 +21,8 @@ export class AppointmentsService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Pet)
     private readonly petRepository: Repository<Pet>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
+    @InjectRepository(Veterinarian)
+    private readonly veterinarianRepository: Repository<Veterinarian>
   ) {}
 
   async create(
@@ -39,18 +39,12 @@ export class AppointmentsService {
     }
 
     // Verificar si el veterinario existe y es staff
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarian_id },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarian_id },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarian_id} no encontrada`,
-      );
-    }
-
-    if (veterinarian.role !== 'staff') {
-      throw new BadRequestException(
-        `La persona con ID ${veterinarian_id} no es un miembro del staff`,
+        `Veterinario con ID ${veterinarian_id} no encontrado`,
       );
     }
 
@@ -65,6 +59,7 @@ export class AppointmentsService {
         veterinarian_id,
         date: Between(startTime, endTime),
         status: 'programada',
+        companyId: loggedUser.companyId
       },
     });
 
@@ -77,6 +72,7 @@ export class AppointmentsService {
     // Buscar último correlativo (el numérico más alto) y aumentar en uno
     const lastAppointment = await this.appointmentRepository
       .createQueryBuilder('appointment')
+      .where('appointment.companyId = :company_id', { company_id: loggedUser.companyId })
       .orderBy('appointment.id', 'DESC')
       .limit(1)
       .getOne();
@@ -100,6 +96,7 @@ export class AppointmentsService {
       document: createAppointmentDto.document,
       user_id: loggedUser.id,
       correlative: nextCorrelative,
+      companyId: loggedUser.companyId,
     });
     console.log(appointment);
 
@@ -119,7 +116,7 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian');
 
     // Filtro empresa
-    queryBuilder.where('user.company_id = :company_id', { company_id: companyId });
+    queryBuilder.where('appointment.companyId = :company_id', { company_id: companyId });
 
     // Aplicar filtros básicos de cita
     if (filters.pet_id) {
@@ -228,19 +225,15 @@ export class AppointmentsService {
     };
   }
 
-  async findOne(id: number, companyId?: number): Promise<Appointment> {
-    const queryBuilder = this.appointmentRepository.createQueryBuilder('appointment')
+  async findOne(id: number, companyId: number): Promise<Appointment> {
+    const appointment = await this.appointmentRepository.createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
-      .where('appointment.id = :id', { id });
-    
-    if(companyId) {
-      queryBuilder.andWhere('user.company_id = :company_id', { company_id: companyId });
-    }
-
-    const appointment = await queryBuilder.getOne();
+      .where('appointment.id = :id', { id })
+      .andWhere('appointment.companyId = :company_id', { company_id: companyId })
+      .getOne();
 
     if (!appointment) {
       throw new NotFoundException(`Cita con ID ${id} no encontrada`);
@@ -276,12 +269,12 @@ export class AppointmentsService {
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarianId} no encontrada`,
+        `Veterinario con ID ${veterinarianId} no encontrado`,
       );
     }
 
@@ -303,12 +296,12 @@ export class AppointmentsService {
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarianId} no encontrada`,
+        `Veterinario con ID ${veterinarianId} no encontrado`,
       );
     }
 
@@ -335,7 +328,7 @@ export class AppointmentsService {
     filters.status = 'programada';
 
     // Usar el método findAll con los filtros, pero con un ordenamiento personalizado
-    const result = await this.findAll(companyId, filters);
+    //const result = await this.findAll(companyId, filters);
 
     // El ordenamiento para citas próximas debe ser ASC por fecha
     const queryBuilder = this.appointmentRepository
@@ -343,7 +336,8 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
-      .where('appointment.date >= :now', { now: new Date() })
+      .where('appointment.companyId = :company_id', {company_id: companyId})
+      .andWhere('appointment.date >= :now', { now: new Date() })
       .andWhere('appointment.status = :status', { status: 'programada' });
 
     // Aplicar filtros adicionales si existen
@@ -459,19 +453,13 @@ export class AppointmentsService {
       updateAppointmentDto.veterinarian_id &&
       updateAppointmentDto.veterinarian_id !== appointment.veterinarian_id
     ) {
-      const veterinarian = await this.personRepository.findOne({
-        where: { id: updateAppointmentDto.veterinarian_id },
+      const veterinarian = await this.veterinarianRepository.findOne({
+        where: { personId: updateAppointmentDto.veterinarian_id },
       });
 
       if (!veterinarian) {
         throw new NotFoundException(
           `Persona con ID ${updateAppointmentDto.veterinarian_id} no encontrada`,
-        );
-      }
-
-      if (veterinarian.role !== 'staff') {
-        throw new BadRequestException(
-          `La persona con ID ${updateAppointmentDto.veterinarian_id} no es un miembro del staff`,
         );
       }
     }
@@ -494,6 +482,7 @@ export class AppointmentsService {
           veterinarian_id: veterinarianId,
           date: Between(startTime, endTime),
           status: 'programada',
+          companyId
         },
       });
 
@@ -546,8 +535,10 @@ export class AppointmentsService {
   }
 
   async remove(id: number, companyId: number): Promise<void> {
-    await this.findOne(id, companyId); 
-    await this.appointmentRepository.softDelete(id);
+    const result = await this.appointmentRepository.softDelete({id, companyId});
+    if(result.affected === 0) {
+      throw new NotFoundException(`Cita con ID ${id} no encontrada`);
+    }
   }
 
   async findAppointmentsWithoutMedicalRecord(
@@ -564,7 +555,7 @@ export class AppointmentsService {
       .where('mr.id IS NULL'); // Solo las que no tienen atención
     
     // Filtro empresa
-    query.andWhere('user.company_id = :company_id', { company_id: companyId });
+    query.andWhere('appointment.companyId = :company_id', { company_id: companyId });
 
     if (correlative) {
       query.andWhere('UPPER(appointment.correlative) LIKE :correlative', {

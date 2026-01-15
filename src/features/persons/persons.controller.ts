@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { PersonsService } from './persons.service';
 import { DniSearchService } from './dni-search.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('persons')
 export class PersonsController {
@@ -24,10 +25,15 @@ export class PersonsController {
     @Get('search-dni/:dni')
     async searchAndCreatePersonByDni(
         @Param('dni') dni: string, 
+        @CompanyId() companyId: number,
         @Query('role') role?: string,
         @Query('create') create?: string // Query param para determinar si crear o solo buscar
     ) {
         const finalRole = role || 'cliente';
+
+        if(finalRole === 'staff' && !companyId) {
+            throw new BadRequestException('El ID de la empresa es requerido para el rol staff');
+        }
         
         // Buscar primero en nuestra base de datos
         const existingPersons = await this.personsService.findAll({
@@ -57,7 +63,8 @@ export class PersonsController {
                     email: personData.email || '',
                     phone_number: personData.phone_number || '',
                     address: personData.address || '',
-                    role: finalRole
+                    role: finalRole,
+                    ...(finalRole === 'staff' ? { company_id: companyId } : {}) 
                 };
                 
                 const newPerson = await this.personsService.create(createPersonDto);
@@ -79,7 +86,7 @@ export class PersonsController {
                         email: personData.email || '',
                         phone_number: personData.phone_number || '',
                         address: personData.address || '',
-                        role: finalRole
+                        role: finalRole,
                     },
                     source: 'api'
                 };
@@ -99,9 +106,10 @@ export class PersonsController {
     @Get('search-staff/:dni')
     async searchStaffByDni(
         @Param('dni') dni: string,
+        @CompanyId() companyId: number,
         @Query('create') create?: string
     ) {
-        return this.searchAndCreatePersonByDni(dni, 'staff', create);
+        return this.searchAndCreatePersonByDni(dni, companyId, 'staff', create);
     }
 
     // Endpoint más simple para búsqueda sin crear

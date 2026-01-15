@@ -12,6 +12,7 @@ import { ProcedureTypesController } from './procedure-types.controller';
 import { ProcedureTypesService } from './procedure-types.service';
 import { diskStorage } from 'multer';
 import { existsSync, mkdirSync } from 'fs';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { existsSync, mkdirSync } from 'fs';
       Pet,
       Person,
       Appointment,
+      Veterinarian
     ]),
     MulterModule.register({
       storage: diskStorage({

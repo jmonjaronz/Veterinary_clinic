@@ -2,13 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  UploadedFile,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not } from 'typeorm';
 import { Hospitalization } from './entities/hospitalization.entity';
 import { Pet } from '../pets/entities/pet.entity';
-import { Person } from '../persons/entities/person.entity';
 import { CreateHospitalizationDto } from './dto/create-hospitalization.dto';
 import { UpdateHospitalizationDto } from './dto/update-hospitalization.dto';
 import { HospitalizationFilterDto } from './dto/hospitalization-filter.dto';
@@ -24,8 +22,8 @@ export class HospitalizationsService {
     private readonly hospitalizationRepository: Repository<Hospitalization>,
     @InjectRepository(Pet)
     private readonly petRepository: Repository<Pet>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
+    @InjectRepository(Veterinarian)
+    private readonly veterinarianRepository: Repository<Veterinarian>,
   ) {}
 
   async create(
@@ -35,25 +33,19 @@ export class HospitalizationsService {
     const { pet_id, veterinarian_id, reason, description, admission_date } =
       createHospitalizationDto;
 
-    // Verificar si la mascota existe
+    // Verificar si la mascot_a existe
     const pet = await this.petRepository.findOne({ where: { id: pet_id } });
     if (!pet) {
       throw new NotFoundException(`Mascota con ID ${pet_id} no encontrada`);
     }
 
-    // Verificar si el veterinario existe y es staff
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarian_id },
+    // Verificar si el veterinario existe
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarian_id },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarian_id} no encontrada`,
-      );
-    }
-
-    if (veterinarian.role !== 'staff') {
-      throw new BadRequestException(
-        `La persona con ID ${veterinarian_id} no es un miembro del staff`,
+        `Veterinario con ID ${veterinarian_id} no encontrado`,
       );
     }
 
@@ -62,6 +54,7 @@ export class HospitalizationsService {
       where: {
         pet_id,
         discharge_date: IsNull(),
+        companyId: loggedUser.companyId,
       },
     });
 
@@ -92,12 +85,13 @@ export class HospitalizationsService {
       admission_date,
       discharge_date: createHospitalizationDto.discharge_date,
       treatment: createHospitalizationDto.treatment,
+      companyId: loggedUser.companyId,
     });
 
     return await this.hospitalizationRepository.save(hospitalization);
   }
 
-  async findAll(filterDto?: HospitalizationFilterDto) {
+  async findAll(companyId:number, filterDto?: HospitalizationFilterDto) {
     // Usar un objeto por defecto si filterDto es undefined
     const filters = filterDto || new HospitalizationFilterDto();
 
@@ -107,7 +101,8 @@ export class HospitalizationsService {
       .leftJoinAndSelect('hosp.pet', 'pet')
       .leftJoinAndSelect('hosp.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('hosp.veterinarian', 'veterinarian');
+      .leftJoinAndSelect('hosp.veterinarian', 'veterinarian')
+      .where('hosp.companyId = :companyId', { companyId });
 
     // Aplicar filtros básicos
     if (filters.pet_id) {
@@ -241,9 +236,9 @@ export class HospitalizationsService {
     };
   }
 
-  async findOne(id: number): Promise<Hospitalization> {
+  async findOne(id: number, companyId: number): Promise<Hospitalization> {
     const hospitalization = await this.hospitalizationRepository.findOne({
-      where: { id },
+      where: { id, companyId },
       relations: ['pet', 'pet.owner', 'veterinarian'],
     });
 
@@ -255,6 +250,7 @@ export class HospitalizationsService {
   }
 
   async findByPet(
+    companyId: number,
     petId: number,
     filterDto?: HospitalizationFilterDto,
   ): Promise<any> {
@@ -271,16 +267,17 @@ export class HospitalizationsService {
     filters.pet_id = petId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByVeterinarian(
+    companyId: number,
     veterinarianId: number,
     filterDto?: HospitalizationFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
@@ -295,10 +292,10 @@ export class HospitalizationsService {
     filters.veterinarian_id = veterinarianId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
-  async findActive(filterDto?: HospitalizationFilterDto): Promise<any> {
+  async findActive(companyId: number, filterDto?: HospitalizationFilterDto): Promise<any> {
     // Crear filtros usando el mismo enfoque que en otros servicios
     const filters = filterDto || new HospitalizationFilterDto();
 
@@ -306,10 +303,10 @@ export class HospitalizationsService {
     filters.is_active = true;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
-  async findDischarged(filterDto?: HospitalizationFilterDto): Promise<any> {
+  async findDischarged(companyId: number, filterDto?: HospitalizationFilterDto): Promise<any> {
     // Crear filtros usando el mismo enfoque que en otros servicios
     const filters = filterDto || new HospitalizationFilterDto();
 
@@ -317,14 +314,15 @@ export class HospitalizationsService {
     filters.is_active = false;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async update(
     id: number,
     updateHospitalizationDto: UpdateHospitalizationDto,
+    companyId: number
   ): Promise<Hospitalization> {
-    const hospitalization = await this.findOne(id);
+    const hospitalization = await this.findOne(id, companyId);
 
     // Si se intenta cambiar la mascota, verificar que exista
     if (
@@ -348,6 +346,7 @@ export class HospitalizationsService {
             pet_id: updateHospitalizationDto.pet_id,
             discharge_date: IsNull(),
             id: Not(id), // Excluir la hospitalización actual
+            companyId: companyId,
           },
         });
 
@@ -364,19 +363,13 @@ export class HospitalizationsService {
       updateHospitalizationDto.veterinarian_id !==
         hospitalization.veterinarian_id
     ) {
-      const veterinarian = await this.personRepository.findOne({
-        where: { id: updateHospitalizationDto.veterinarian_id },
+      const veterinarian = await this.veterinarianRepository.findOne({
+        where: { personId: updateHospitalizationDto.veterinarian_id },
       });
 
       if (!veterinarian) {
         throw new NotFoundException(
-          `Persona con ID ${updateHospitalizationDto.veterinarian_id} no encontrada`,
-        );
-      }
-
-      if (veterinarian.role !== 'staff') {
-        throw new BadRequestException(
-          `La persona con ID ${updateHospitalizationDto.veterinarian_id} no es un miembro del staff`,
+          `Veterinario con ID ${updateHospitalizationDto.veterinarian_id} no encontrado`,
         );
       }
     }
@@ -420,9 +413,10 @@ export class HospitalizationsService {
 
   async discharge(
     id: number,
+    companyId: number,
     dischargeDate: Date = new Date(),
   ): Promise<Hospitalization> {
-    const hospitalization = await this.findOne(id);
+    const hospitalization = await this.findOne(id, companyId);
 
     if (hospitalization.discharge_date) {
       throw new BadRequestException(
@@ -442,17 +436,17 @@ export class HospitalizationsService {
     return this.hospitalizationRepository.save(hospitalization);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.hospitalizationRepository.softDelete(id);
+  async remove(id: number, companyId: number): Promise<void> {
+    const result = await this.hospitalizationRepository.softDelete({ id, companyId });
 
     if (result.affected === 0) {
       throw new NotFoundException(`Hospitalización con ID ${id} no encontrada`);
     }
   }
 
-  async savePdf(id: number, newFilePath: string): Promise<Hospitalization> {
+  async savePdf(id: number, newFilePath: string, companyId: number): Promise<Hospitalization> {
     const hospitalization = await this.hospitalizationRepository.findOne({
-      where: { id },
+      where: { id, companyId },
     });
 
     if (!hospitalization) {
@@ -472,8 +466,7 @@ export class HospitalizationsService {
       // Verificamos si el archivo existe antes de intentar borrarlo
       if (fs.existsSync(oldPath)) {
         fs.unlinkSync(oldPath);
-      } else {
-      }
+      } 
     }
 
     // Guardamos la nueva ruta
@@ -485,9 +478,10 @@ export class HospitalizationsService {
   async saveFiles(
     id: number,
     newFilePaths: string[],
+    companyId: number
   ): Promise<Hospitalization> {
     const record = await this.hospitalizationRepository.findOne({
-      where: { id },
+      where: { id, companyId },
     });
     if (!record) {
       throw new NotFoundException('Registro de hospitalización no encontrado');
@@ -502,9 +496,9 @@ export class HospitalizationsService {
     return await this.hospitalizationRepository.save(record);
   }
 
-  async removeFile(id: number, filePath: string): Promise<Hospitalization> {
+  async removeFile(id: number, filePath: string, companyId: number): Promise<Hospitalization> {
   const record = await this.hospitalizationRepository.findOne({
-    where: { id },
+    where: { id, companyId },
   });
   if (!record) {
     throw new NotFoundException('Registro de hospitalización no encontrado');

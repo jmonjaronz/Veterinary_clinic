@@ -12,7 +12,6 @@ import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { UsersService } from '../users/users.service';
-import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class PersonsService {
@@ -60,6 +59,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
 
       await this.usersService.create({
         person_id: savedPerson.id,
+        company_id: createPersonDto.company_id as number,
         user_type: savedPerson.dni,        // 👈 corregido (no debe ser el DNI)
         password,                  // UsersService se encarga de hashear internamente
       });
@@ -84,6 +84,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
 
           await this.usersService.create({
             person_id: savedPerson.id,
+            company_id: createPersonDto.company_id as number,
             user_type: savedPerson.dni,
             password,
           });

@@ -41,6 +41,7 @@ export class MedicalRecordsController {
     // Crear el registro médico
     const createdRecord = await this.medicalRecordsService.create(
       createMedicalRecordDto,
+      companyId,
       req.user,
     );
 

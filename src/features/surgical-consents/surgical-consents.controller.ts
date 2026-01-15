@@ -21,6 +21,7 @@ import { SurgicalConsentsService } from './surgical-consents.service';
 import { CreateSurgicalConsentDto } from './dto/create-surgical-consent.dto';
 import { UpdateSurgicalConsentDto } from './dto/update-surgical-consent.dto';
 import { SurgicalConsentFilterDto } from './dto/surgical-consent-filter.dto';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('surgical-consents')
 export class SurgicalConsentsController {
@@ -28,62 +29,69 @@ export class SurgicalConsentsController {
 
     @UseGuards(JwtAuthGuard)
     @Post()
-    create(@Body() createSurgicalConsentDto: CreateSurgicalConsentDto) {
-        return this.surgicalConsentsService.create(createSurgicalConsentDto);
+    create(
+        @Body() createSurgicalConsentDto: CreateSurgicalConsentDto, 
+        @CompanyId() companyId: number
+    ) {
+        return this.surgicalConsentsService.create(createSurgicalConsentDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Query() filterDto: SurgicalConsentFilterDto) {
-        return this.surgicalConsentsService.findAll(filterDto);
+    findAll(@Query() filterDto: SurgicalConsentFilterDto, @CompanyId() companyId: number) {
+        return this.surgicalConsentsService.findAll(companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.surgicalConsentsService.findOne(+id);
+    findOne(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.surgicalConsentsService.findOne(+id, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('pet/:petId')
     findByPet(
         @Param('petId') petId: string,
+        @CompanyId() companyId: number,
         @Query() filterDto: SurgicalConsentFilterDto
     ) {
-        return this.surgicalConsentsService.findByPet(+petId, filterDto);
+        return this.surgicalConsentsService.findByPet(+petId, companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('owner/:ownerId')
     findByOwner(
         @Param('ownerId') ownerId: string,
+        @CompanyId() companyId: number,
         @Query() filterDto: SurgicalConsentFilterDto
     ) {
-        return this.surgicalConsentsService.findByOwner(+ownerId, filterDto);
+        return this.surgicalConsentsService.findByOwner(+ownerId, companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('veterinarian/:veterinarianId')
     findByVeterinarian(
         @Param('veterinarianId') veterinarianId: string,
+        @CompanyId() companyId: number,
         @Query() filterDto: SurgicalConsentFilterDto
     ) {
-        return this.surgicalConsentsService.findByVeterinarian(+veterinarianId, filterDto);
+        return this.surgicalConsentsService.findByVeterinarian(+veterinarianId, companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('status/:status')
     findByStatus(
         @Param('status') status: string,
+        @CompanyId() companyId: number,
         @Query() filterDto: SurgicalConsentFilterDto
     ) {
-        return this.surgicalConsentsService.findByStatus(status, filterDto);
+        return this.surgicalConsentsService.findByStatus(status, companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get(':id/pdf')
-    async generatePdf(@Param('id') id: string, @Res() res: Response) {
-        const { fileName, filePath } = await this.surgicalConsentsService.generateConsentPdf(+id);
+    async generatePdf(@Param('id') id: string, @Res() res: Response, @CompanyId() companyId: number) {
+        const { fileName, filePath } = await this.surgicalConsentsService.generateConsentPdf(+id, companyId);
 
         res.download(filePath, fileName, (err) => {
             if (err) {
@@ -96,15 +104,16 @@ export class SurgicalConsentsController {
     @Patch(':id')
     update(
         @Param('id') id: string,
-        @Body() updateSurgicalConsentDto: UpdateSurgicalConsentDto
+        @Body() updateSurgicalConsentDto: UpdateSurgicalConsentDto,
+        @CompanyId() companyId: number
     ) {
-        return this.surgicalConsentsService.update(+id, updateSurgicalConsentDto);
+        return this.surgicalConsentsService.update(+id, updateSurgicalConsentDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Patch(':id/cancel')
-    cancel(@Param('id') id: string) {
-        return this.surgicalConsentsService.cancel(+id);
+    cancel(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.surgicalConsentsService.cancel(+id, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -137,14 +146,15 @@ export class SurgicalConsentsController {
     )
     uploadSignedDocument(
         @Param('id') id: string,
+        @CompanyId() companyId: number,
         @UploadedFile() file: Express.Multer.File
     ) {
-        return this.surgicalConsentsService.uploadSignedDocument(+id, file);
+        return this.surgicalConsentsService.uploadSignedDocument(+id, file, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.surgicalConsentsService.remove(+id);
+    remove(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.surgicalConsentsService.remove(+id, companyId);
     }
 }

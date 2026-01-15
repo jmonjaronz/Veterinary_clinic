@@ -25,6 +25,7 @@ import { extname } from 'path';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { User } from '../users/entities/user.entity';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('hospitalizations')
 export class HospitalizationsController {
@@ -84,12 +85,14 @@ export class HospitalizationsController {
       await this.hospitalizationsService.savePdf(
         createdHospitalization.id,
         filePath,
+        user.companyId,
       );
     }
 
     // 4. Retornar hospitalización actualizada
     return await this.hospitalizationsService.findOne(
       createdHospitalization.id,
+      user.companyId,
     );
   }
 
@@ -97,36 +100,38 @@ export class HospitalizationsController {
   @Get()
   findAll(
     @Query() filterDto: HospitalizationFilterDto,
+    @CompanyId() companyId: number,
     @Query('pet_id') petId?: string,
     @Query('veterinarian_id') veterinarianId?: string,
     @Query('status') status?: string,
   ) {
     if (petId) {
-      return this.hospitalizationsService.findByPet(+petId, filterDto);
+      return this.hospitalizationsService.findByPet(companyId, +petId, filterDto);
     }
 
     if (veterinarianId) {
       return this.hospitalizationsService.findByVeterinarian(
+        companyId,
         +veterinarianId,
         filterDto,
       );
     }
 
     if (status === 'active') {
-      return this.hospitalizationsService.findActive(filterDto);
+      return this.hospitalizationsService.findActive(companyId, filterDto);
     }
 
     if (status === 'discharged') {
-      return this.hospitalizationsService.findDischarged(filterDto);
+      return this.hospitalizationsService.findDischarged(companyId, filterDto);
     }
 
-    return this.hospitalizationsService.findAll(filterDto);
+    return this.hospitalizationsService.findAll(companyId, filterDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.hospitalizationsService.findOne(+id);
+  findOne(@Param('id') id: string, @CompanyId() companyId: number) {
+    return this.hospitalizationsService.findOne(+id, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -134,23 +139,25 @@ export class HospitalizationsController {
   update(
     @Param('id') id: string,
     @Body() updateHospitalizationDto: UpdateHospitalizationDto,
+    @CompanyId() companyId: number
   ) {
-    return this.hospitalizationsService.update(+id, updateHospitalizationDto);
+    return this.hospitalizationsService.update(+id, updateHospitalizationDto, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/discharge')
   discharge(
     @Param('id') id: string,
+    @CompanyId() companyId: number,
     @Body('discharge_date') dischargeDate?: Date,
   ) {
-    return this.hospitalizationsService.discharge(+id, dischargeDate);
+    return this.hospitalizationsService.discharge(+id, companyId, dischargeDate);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.hospitalizationsService.remove(+id);
+  remove(@Param('id') id: string, @CompanyId() companyId: number) {
+    return this.hospitalizationsService.remove(+id, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -183,10 +190,12 @@ export class HospitalizationsController {
   async uploadFiles(
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],
+    @CompanyId() companyId: number
   ) {
     return this.hospitalizationsService.saveFiles(
       +id,
       files.map((f) => f.path),
+      companyId
     );
   }
 
@@ -195,7 +204,8 @@ export class HospitalizationsController {
   async removeFile(
     @Param('id') id: string,
     @Query('filePath') filePath: string,
+    @CompanyId() companyId: number
   ) {
-    return this.hospitalizationsService.removeFile(+id, filePath);
+    return this.hospitalizationsService.removeFile(+id, filePath, companyId);
   }
 }

@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { MedicalRecord } from './entities/medical-record.entity';
 import { Pet } from '../pets/entities/pet.entity';
-import { Person } from '../persons/entities/person.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
 import { Hospitalization } from '../hospitalizations/entities/hospitalization.entity';
@@ -23,6 +22,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { TreatmentResponseDto } from '../treatments/dto/treatments-response.dto';
 import { User } from '../users/entities/user.entity';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -31,8 +31,6 @@ export class MedicalRecordsService {
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
     @InjectRepository(Pet)
     private readonly petRepository: Repository<Pet>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
     @InjectRepository(Appointment)
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Treatment)
@@ -41,10 +39,14 @@ export class MedicalRecordsService {
     private readonly hospitalizationRepository: Repository<Hospitalization>,
     @InjectRepository(VaccinationRecord)
     private readonly vaccinationRecordRepository: Repository<VaccinationRecord>,
+    @InjectRepository(Veterinarian)
+    private readonly veterinarianRepository:
+    Repository<Veterinarian>
   ) {}
 
   async create(
     createMedicalRecordDto: CreateMedicalRecordDto,
+    companyId: number,
     loggedUser: User,
   ): Promise<MedicalRecord> {
     const { pet_id, appointment_id, veterinarian_id, diagnosis, type } =
@@ -57,8 +59,8 @@ export class MedicalRecordsService {
     }
 
     // Verificar si el veterinario existe y es staff
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarian_id },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarian_id, companyId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
@@ -66,16 +68,10 @@ export class MedicalRecordsService {
       );
     }
 
-    if (veterinarian.role !== 'staff') {
-      throw new BadRequestException(
-        `La persona con ID ${veterinarian_id} no es un miembro del staff`,
-      );
-    }
-
     // Verificar si la cita existe si se proporciona
     if (appointment_id) {
       const appointment = await this.appointmentRepository.findOne({
-        where: { id: appointment_id },
+        where: { id: appointment_id, companyId },
       });
       if (!appointment) {
         throw new NotFoundException(
@@ -99,7 +95,7 @@ export class MedicalRecordsService {
       // Validar si la cita ya tiene atención
       if (appointment_id) {
         const existing = await this.medicalRecordRepository.findOne({
-          where: { appointment_id },
+          where: { appointment_id, companyId },
         });
 
         if (existing) {
@@ -123,6 +119,7 @@ export class MedicalRecordsService {
       veterinarian_id,
       diagnosis,
       type,
+      companyId,
 
       lote: createMedicalRecordDto.lote,
       care_type: createMedicalRecordDto.care_type,
@@ -181,7 +178,7 @@ export class MedicalRecordsService {
       .leftJoinAndSelect('mr.veterinarian', 'veterinarian')
       .leftJoinAndSelect('mr.treatments', 'treatments')
       .leftJoinAndSelect('mr.appointment', 'appointment')
-      .where('user.company_id = :companyId', { companyId });
+      .where('mr.companyId = :companyId', { companyId });
 
     // Aplicar filtros básicos
     if (filters.pet_id) {
@@ -308,7 +305,7 @@ export class MedicalRecordsService {
 
   async findOne(id: number, companyId: number): Promise<MedicalRecord> {
     const medicalRecord = await this.medicalRecordRepository.findOne({
-      where: { id: id, user: {companyId: companyId} },
+      where: { id: id, companyId },
       relations: [
         'pet',
         'user',
@@ -357,8 +354,8 @@ export class MedicalRecordsService {
     filterDto?: MedicalRecordFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId, companyId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
@@ -386,7 +383,7 @@ export class MedicalRecordsService {
   ): Promise<any> {
     // Verificar si la cita existe
     const appointment = await this.appointmentRepository.findOne({
-      where: { id: appointmentId },
+      where: { id: appointmentId, companyId },
     });
     if (!appointment) {
       throw new NotFoundException(`Cita con ID ${appointmentId} no encontrada`);
@@ -435,19 +432,13 @@ export class MedicalRecordsService {
       updateMedicalRecordDto.veterinarian_id &&
       updateMedicalRecordDto.veterinarian_id !== medicalRecord.veterinarian_id
     ) {
-      const veterinarian = await this.personRepository.findOne({
-        where: { id: updateMedicalRecordDto.veterinarian_id },
+      const veterinarian = await this.veterinarianRepository.findOne({
+        where: { personId: updateMedicalRecordDto.veterinarian_id, companyId },
       });
 
       if (!veterinarian) {
         throw new NotFoundException(
-          `Persona con ID ${updateMedicalRecordDto.veterinarian_id} no encontrada`,
-        );
-      }
-
-      if (veterinarian.role !== 'staff') {
-        throw new BadRequestException(
-          `La persona con ID ${updateMedicalRecordDto.veterinarian_id} no es un miembro del staff`,
+          `Veterinario con ID ${updateMedicalRecordDto.veterinarian_id} no encontrado`,
         );
       }
 
@@ -460,7 +451,7 @@ export class MedicalRecordsService {
       updateMedicalRecordDto.appointment_id !== medicalRecord.appointment_id
     ) {
       const appointment = await this.appointmentRepository.findOne({
-        where: { id: updateMedicalRecordDto.appointment_id },
+        where: { id: updateMedicalRecordDto.appointment_id, companyId },
       });
 
       if (!appointment) {
@@ -508,8 +499,11 @@ export class MedicalRecordsService {
   }
 
   async remove(id: number, companyId: number): Promise<void> {
-    await this.findOne(id, companyId);
-    await this.medicalRecordRepository.softDelete(id);
+    const result = await this.medicalRecordRepository.softDelete({ id, companyId });
+
+    if(result.affected === 0) {
+      throw new NotFoundException(`Registro médico con ID ${id} no encontrado`);
+    }
   }
 
   private normalizeDate(date: Date, endOfDay = false): Date {
@@ -558,9 +552,7 @@ export class MedicalRecordsService {
           inicio.toISOString().split('T')[0],
           fin.toISOString().split('T')[0],
         ),
-        user: {
-          companyId: companyId,
-        }
+        companyId
       },
       relations: [
         'veterinarian',
@@ -584,14 +576,14 @@ export class MedicalRecordsService {
 
     // ==== Citas ====
     const appointments = await this.appointmentRepository.find({
-      where: { pet_id: petId, date: Between(inicio, fin), user: {companyId: companyId} },
+      where: { pet_id: petId, date: Between(inicio, fin), companyId },
       relations: ['veterinarian', 'user'],
       order: { date: 'DESC' },
     });
 
     // ==== Hospitalizaciones ====
     const hospitalizations = await this.hospitalizationRepository.find({
-      where: { pet_id: petId, admission_date: Between(inicio, fin), user: {companyId: companyId} },
+      where: { pet_id: petId, admission_date: Between(inicio, fin), companyId },
       relations: ['veterinarian', 'user'],
       order: { admission_date: 'DESC' },
     });
@@ -605,7 +597,7 @@ export class MedicalRecordsService {
       .leftJoinAndSelect('treatment.medical_record', 'medical_record')
       .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
       .leftJoin('medical_record.user', 'user')
-      .andWhere('user.company_id = :companyId', { companyId })
+      .andWhere('medical_record.companyId = :companyId', { companyId })
       .orderBy('treatment.date', 'DESC')
       .getMany();
 
@@ -721,7 +713,7 @@ export class MedicalRecordsService {
           type: 'appointment',
           date: new Date(appointment.date),
           description: `Cita ${appointment.appointment_type}`,
-          veterinarian: appointment.veterinarian?.full_name,
+          veterinarian: appointment.veterinarian?.person.full_name,
           status: appointment.status,
         });
       }
@@ -738,7 +730,7 @@ export class MedicalRecordsService {
           type: 'hospitalization',
           date: new Date(hospitalization.admission_date),
           description: `Hospitalización: ${hospitalization.reason || 'Sin motivo'}`,
-          veterinarian: hospitalization.veterinarian?.full_name,
+          veterinarian: hospitalization.veterinarian?.person.full_name,
           status: hospitalization.discharge_date ? 'Alta' : 'En curso',
         });
       }
@@ -780,7 +772,7 @@ export class MedicalRecordsService {
 
   async saveFiles(id: number, newFilePaths: string[], companyId: number): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOne({
-      where: { id, user: {companyId: companyId} },
+      where: { id, companyId },
     });
     if (!record) {
       throw new NotFoundException('Registro médico no encontrado');
@@ -799,7 +791,7 @@ export class MedicalRecordsService {
 
   async removeFile(id: number, filePath: string, companyId: number): Promise<MedicalRecord> {
     const record = await this.medicalRecordRepository.findOne({
-      where: { id, user: {companyId: companyId} },
+      where: { id,  companyId },
     });
     if (!record) {
       throw new NotFoundException('Registro médico no encontrado');

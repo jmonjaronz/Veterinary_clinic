@@ -13,6 +13,7 @@ import { CreateSurgicalConsentDto } from './dto/create-surgical-consent.dto';
 import { UpdateSurgicalConsentDto } from './dto/update-surgical-consent.dto';
 import { SurgicalConsentFilterDto } from './dto/surgical-consent-filter.dto';
 import { SurgicalConsentResponseDto } from './dto/surgical-consent-response.dto';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Injectable()
 export class SurgicalConsentsService {
@@ -25,12 +26,14 @@ export class SurgicalConsentsService {
         private readonly petRepository: Repository<Pet>,
         @InjectRepository(Person)
         private readonly personRepository: Repository<Person>,
+        @InjectRepository(Veterinarian)
+        private readonly veterinarianRepository: Repository<Veterinarian>,
         @InjectRepository(Appointment)
         private readonly appointmentRepository: Repository<Appointment>,
         private readonly configService: ConfigService,
     ) {}
 
-    async create(createSurgicalConsentDto: CreateSurgicalConsentDto): Promise<SurgicalConsentResponseDto> {
+    async create(createSurgicalConsentDto: CreateSurgicalConsentDto, companyId: number): Promise<SurgicalConsentResponseDto> {
         const { 
             appointment_id, 
             pet_id, 
@@ -43,7 +46,7 @@ export class SurgicalConsentsService {
 
         // 1. Validar que la cita existe
         const appointment = await this.appointmentRepository.findOne({ 
-            where: { id: appointment_id } 
+            where: { id: appointment_id, companyId } 
         });
         if (!appointment) {
             throw new NotFoundException(`Cita con ID ${appointment_id} no encontrada`);
@@ -75,16 +78,12 @@ export class SurgicalConsentsService {
             throw new BadRequestException(`La persona con ID ${owner_id} no es un cliente`);
         }
 
-        // 5. Validar que el veterinario existe y tiene rol 'staff'
-        const veterinarian = await this.personRepository.findOne({ 
-            where: { id: veterinarian_id } 
+        // 5. Validar que el veterinario existe 
+        const veterinarian = await this.veterinarianRepository.findOne({ 
+            where: { personId: veterinarian_id, companyId } 
         });
         if (!veterinarian) {
             throw new NotFoundException(`Veterinario con ID ${veterinarian_id} no encontrado`);
-        }
-
-        if (veterinarian.role !== 'staff') {
-            throw new BadRequestException(`La persona con ID ${veterinarian_id} no es un miembro del staff`);
         }
 
         // 6. Validar el tipo de procedimiento o el procedimiento personalizado
@@ -115,7 +114,7 @@ export class SurgicalConsentsService {
 
         // 8. Verificar si ya existe un consentimiento para esta cita
         const existingConsent = await this.surgicalConsentRepository.findOne({
-            where: { appointment_id }
+            where: { appointment_id, companyId }
         });
 
         if (existingConsent) {
@@ -125,16 +124,17 @@ export class SurgicalConsentsService {
         // 9. Crear el consentimiento
         const surgicalConsent = this.surgicalConsentRepository.create({
             ...createSurgicalConsentDto,
-            status: 'pendiente'
+            status: 'pendiente',
+            companyId
         });
 
         const savedConsent = await this.surgicalConsentRepository.save(surgicalConsent);
         
         // 10. Buscar el consentimiento guardado con sus relaciones para transformarlo
-        return this.findOne(savedConsent.id);
+        return this.findOne(savedConsent.id, companyId);
     }
 
-    async findAll(filterDto?: SurgicalConsentFilterDto) {
+    async findAll(companyId: number, filterDto?: SurgicalConsentFilterDto) {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new SurgicalConsentFilterDto();
         
@@ -145,7 +145,8 @@ export class SurgicalConsentsService {
             .leftJoinAndSelect('consent.pet', 'pet')
             .leftJoinAndSelect('consent.owner', 'owner')
             .leftJoinAndSelect('consent.veterinarian', 'veterinarian')
-            .leftJoinAndSelect('consent.procedureType', 'procedureType');
+            .leftJoinAndSelect('consent.procedureType', 'procedureType')
+            .where('consent.companyId = :companyId', { companyId });
 
         // Aplicar filtros básicos
         if (filters.appointment_id) {
@@ -257,9 +258,9 @@ export class SurgicalConsentsService {
         };
     }
 
-    async findOne(id: number): Promise<SurgicalConsentResponseDto> {
+    async findOne(id: number, companyId: number): Promise<SurgicalConsentResponseDto> {
         const consent = await this.surgicalConsentRepository.findOne({
-            where: { id },
+            where: { id, companyId },
             relations: ['appointment', 'pet', 'owner', 'veterinarian', 'procedureType'],
         });
         
@@ -270,7 +271,7 @@ export class SurgicalConsentsService {
         return this.transformConsentResponse(consent);
     }
 
-    async findByPet(petId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
+    async findByPet(petId: number, companyId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Verificar si la mascota existe
         const pet = await this.petRepository.findOne({ where: { id: petId } });
         if (!pet) {
@@ -284,10 +285,10 @@ export class SurgicalConsentsService {
         filters.pet_id = petId;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
     
-    async findByOwner(ownerId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
+    async findByOwner(ownerId: number, companyId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Verificar si el propietario existe
         const owner = await this.personRepository.findOne({ where: { id: ownerId } });
         if (!owner) {
@@ -301,12 +302,12 @@ export class SurgicalConsentsService {
         filters.owner_id = ownerId;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
     
-    async findByVeterinarian(veterinarianId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
+    async findByVeterinarian(veterinarianId: number, companyId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Verificar si el veterinario existe
-        const veterinarian = await this.personRepository.findOne({ where: { id: veterinarianId } });
+        const veterinarian = await this.veterinarianRepository.findOne({ where: { personId: veterinarianId, companyId } });
         if (!veterinarian) {
             throw new NotFoundException(`Veterinario con ID ${veterinarianId} no encontrado`);
         }
@@ -318,10 +319,10 @@ export class SurgicalConsentsService {
         filters.veterinarian_id = veterinarianId;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
     
-    async findByStatus(status: string, filterDto?: SurgicalConsentFilterDto): Promise<any> {
+    async findByStatus(status: string, companyId:number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Validar el estado
         if (!['pendiente', 'firmado', 'cancelado'].includes(status)) {
             throw new BadRequestException(`Estado inválido: ${status}. Debe ser "pendiente", "firmado" o "cancelado"`);
@@ -334,12 +335,12 @@ export class SurgicalConsentsService {
         filters.status = status;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
 
-    async update(id: number, updateSurgicalConsentDto: UpdateSurgicalConsentDto): Promise<SurgicalConsentResponseDto> {
+    async update(id: number, updateSurgicalConsentDto: UpdateSurgicalConsentDto, companyId: number): Promise<SurgicalConsentResponseDto> {
         const consent = await this.surgicalConsentRepository.findOne({
-            where: { id },
+            where: { id, companyId },
             relations: ['appointment', 'pet', 'owner', 'veterinarian', 'procedureType'],
         });
         
@@ -358,7 +359,7 @@ export class SurgicalConsentsService {
         if (updateSurgicalConsentDto.appointment_id && 
             updateSurgicalConsentDto.appointment_id !== consent.appointment_id) {
             const appointment = await this.appointmentRepository.findOne({ 
-                where: { id: updateSurgicalConsentDto.appointment_id } 
+                where: { id: updateSurgicalConsentDto.appointment_id, companyId } 
             });
             
             if (!appointment) {
@@ -369,7 +370,8 @@ export class SurgicalConsentsService {
             const existingConsent = await this.surgicalConsentRepository.findOne({
                 where: { 
                     appointment_id: updateSurgicalConsentDto.appointment_id,
-                    id: Not(id) // Excluir el consentimiento actual
+                    id: Not(id), // Excluir el consentimiento actual
+                    companyId
                 }
             });
 
@@ -427,17 +429,12 @@ export class SurgicalConsentsService {
         // 4. Validar veterinario si se intenta cambiar
         if (updateSurgicalConsentDto.veterinarian_id && 
             updateSurgicalConsentDto.veterinarian_id !== consent.veterinarian_id) {
-            const veterinarian = await this.personRepository.findOne({ 
-                where: { id: updateSurgicalConsentDto.veterinarian_id } 
+            const veterinarian = await this.veterinarianRepository.findOne({ 
+                where: { personId: updateSurgicalConsentDto.veterinarian_id, companyId } 
             });
             
             if (!veterinarian) {
                 throw new NotFoundException(`Veterinario con ID ${updateSurgicalConsentDto.veterinarian_id} no encontrado`);
-            }
-
-            // Verificar que sea un miembro del staff
-            if (veterinarian.role !== 'staff') {
-                throw new BadRequestException(`La persona con ID ${updateSurgicalConsentDto.veterinarian_id} no es un miembro del staff`);
             }
         }
 
@@ -474,11 +471,11 @@ export class SurgicalConsentsService {
         await this.surgicalConsentRepository.save(consent);
         
         // Volver a buscar el consentimiento con sus relaciones para transformarlo
-        return this.findOne(id);
+        return this.findOne(id, companyId);
     }
 
-    async cancel(id: number): Promise<SurgicalConsentResponseDto> {
-        const consent = await this.findOne(id);
+    async cancel(id: number, companyId: number): Promise<SurgicalConsentResponseDto> {
+        const consent = await this.findOne(id, companyId);
         
         if (consent.status === 'cancelado') {
             throw new BadRequestException(`Este consentimiento ya está cancelado`);
@@ -489,14 +486,14 @@ export class SurgicalConsentsService {
         }
 
         // Actualizar estado a cancelado
-        await this.surgicalConsentRepository.update(id, { status: 'cancelado' });
+        await this.surgicalConsentRepository.update({ id, companyId },  { status: 'cancelado' });
         
         // Retornar el consentimiento actualizado
-        return this.findOne(id);
+        return this.findOne(id, companyId);
     }
 
-    async remove(id: number): Promise<void> {
-        const consent = await this.findOne(id);
+    async remove(id: number, companyId: number): Promise<void> {
+        const consent = await this.findOne(id, companyId);
         
         // Si tiene un documento firmado, eliminarlo primero
         if (consent.signed_document) {
@@ -517,16 +514,16 @@ export class SurgicalConsentsService {
             }
         }
 
-        const result = await this.surgicalConsentRepository.softDelete(id);
+        const result = await this.surgicalConsentRepository.softDelete({ id, companyId });
         
         if (result.affected === 0) {
             throw new NotFoundException(`Consentimiento quirúrgico con ID ${id} no encontrado`);
         }
     }
 
-    async generateConsentPdf(id: number): Promise<{ fileName: string, filePath: string }> {
+    async generateConsentPdf(id: number, companyId: number): Promise<{ fileName: string, filePath: string }> {
         const consent = await this.surgicalConsentRepository.findOne({
-            where: { id },
+            where: { id, companyId },
             relations: ['pet', 'pet.species', 'owner', 'veterinarian', 'procedureType'],
         });
         
@@ -594,7 +591,7 @@ export class SurgicalConsentsService {
                 <p><strong>Edad:</strong> ${consent.pet.age ? `${consent.pet.age} meses` : 'No especificada'}</p>
             </div>
             
-            <p>Presta su conformidad y autoriza a: <strong>${consent.veterinarian.full_name}</strong></p>
+            <p>Presta su conformidad y autoriza a: <strong>${consent.veterinarian.person.full_name}</strong></p>
             <p>y a quien se designe, para intervenir quirúrgicamente el animal cuyos datos han sido especificados en este documento, para realizar: <strong>${procedureTypeText}</strong></p>
             <p>y todo otro procedimiento médico/quirúrgico, destinado a procurar salvaguardar la vida del animal y/o procurar mejorar y/o recuperar la salud del mismo.</p>
             
@@ -630,8 +627,8 @@ export class SurgicalConsentsService {
         return { fileName, filePath };
     }
 
-    async uploadSignedDocument(id: number, file: Express.Multer.File): Promise<SurgicalConsentResponseDto> {
-        const consent = await this.findOne(id);
+    async uploadSignedDocument(id: number, file: Express.Multer.File, companyId: number): Promise<SurgicalConsentResponseDto> {
+        const consent = await this.findOne(id, companyId);
         
         if (consent.status === 'cancelado') {
             throw new BadRequestException(`No se puede subir un documento firmado para un consentimiento cancelado`);
@@ -657,13 +654,13 @@ export class SurgicalConsentsService {
         }
 
         // Guardar la referencia al nuevo documento
-        await this.surgicalConsentRepository.update(id, {
+        await this.surgicalConsentRepository.update({ id, companyId }, {
             signed_document: `uploads/consents/${file.filename}`,
             status: 'firmado'
         });
         
         // Retornar el consentimiento actualizado
-        return this.findOne(id);
+        return this.findOne(id, companyId);
     }
 
     // Método privado para transformar la respuesta
