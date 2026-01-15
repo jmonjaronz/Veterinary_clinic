@@ -33,12 +33,12 @@ export class AppointmentFilterDto {
     appointment_type?: string; // control, emergencia, vacunación
 
     @IsOptional()
-    @Type(() => Date)
-    date_start?: Date;
+    // @Type(() => Date)
+    date_start?: Date | string;
 
     @IsOptional()
-    @Type(() => Date)
-    date_end?: Date;
+    // @Type(() => Date)
+    date_end?: Date | string;
 
     // Filtros para mascota relacionada
     @IsOptional()
