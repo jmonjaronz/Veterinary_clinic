@@ -14,6 +14,8 @@ import { UpdateHospitalizationDto } from './dto/update-hospitalization.dto';
 import { HospitalizationFilterDto } from './dto/hospitalization-filter.dto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { User } from '../users/entities/user.entity';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Injectable()
 export class HospitalizationsService {
@@ -28,7 +30,7 @@ export class HospitalizationsService {
 
   async create(
     createHospitalizationDto: CreateHospitalizationDto,
-    loggedUser: any,
+    loggedUser: User,
   ): Promise<Hospitalization> {
     const { pet_id, veterinarian_id, reason, description, admission_date } =
       createHospitalizationDto;

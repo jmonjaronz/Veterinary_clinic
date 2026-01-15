@@ -12,6 +12,7 @@ import { Person } from '../persons/entities/person.entity';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentFilterDto } from './dto/appointment-filter.dto';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AppointmentsService {
@@ -26,7 +27,7 @@ export class AppointmentsService {
 
   async create(
     createAppointmentDto: CreateAppointmentDto,
-    loggedUser: any, // o mejor: User si tienes el tipo importado
+    loggedUser: User, // o mejor: User si tienes el tipo importado
   ): Promise<Appointment> {
     const { pet_id, veterinarian_id, appointment_type, date } =
       createAppointmentDto;

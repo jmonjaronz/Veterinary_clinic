@@ -22,6 +22,7 @@ import { fieldsToUpdate } from './entities/medical-record-update.entitiy';
 import * as path from 'path';
 import * as fs from 'fs';
 import { TreatmentResponseDto } from '../treatments/dto/treatments-response.dto';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -44,7 +45,7 @@ export class MedicalRecordsService {
 
   async create(
     createMedicalRecordDto: CreateMedicalRecordDto,
-    loggedUser: any,
+    loggedUser: User,
   ): Promise<MedicalRecord> {
     const { pet_id, appointment_id, veterinarian_id, diagnosis, type } =
       createMedicalRecordDto;

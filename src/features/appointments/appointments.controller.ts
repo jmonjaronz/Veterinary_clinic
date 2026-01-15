@@ -17,6 +17,7 @@ import { AppointmentFilterDto } from './dto/appointment-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
 import { Appointment } from './entities/appointment.entity';
 import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
+import { User } from '../users/entities/user.entity';
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -24,7 +25,7 @@ export class AppointmentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createAppointmentDto: CreateAppointmentDto, @Req() req) {
+  create(@Body() createAppointmentDto: CreateAppointmentDto, @Req() req: {user: User}) {
     const user = req.user;
     return this.appointmentsService.create(createAppointmentDto, user);
   }
