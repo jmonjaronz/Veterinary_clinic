@@ -12,7 +12,6 @@ interface JwtPayload {
   username: string;
   sub: number;
   id: number;
-  company_id: number;
   role: string;
 }
 
@@ -93,7 +92,6 @@ export class AuthService {
       username: user.user_type,
       sub: user.id,
       id: user.id,
-      company_id: user.company.id,
       role: personRole,
     };
 
