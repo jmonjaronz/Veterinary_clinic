@@ -24,6 +24,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { User } from '../users/entities/user.entity';
 
 @Controller('hospitalizations')
 export class HospitalizationsController {
@@ -57,7 +58,7 @@ export class HospitalizationsController {
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
-    @Req() req,
+    @Req() req: {user: User},
   ) {
     const user = req.user; // 1. Validar DTO
     const dto = plainToInstance(CreateHospitalizationDto, body);

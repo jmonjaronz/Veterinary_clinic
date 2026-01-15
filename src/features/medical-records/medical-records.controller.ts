@@ -25,6 +25,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
+import { User } from '../users/entities/user.entity';
 
 @Controller('medical-records')
 export class MedicalRecordsController {
@@ -35,7 +36,7 @@ export class MedicalRecordsController {
   async create(
     @CompanyId() companyId: number,
     @Body() createMedicalRecordDto: CreateMedicalRecordDto,
-    @Req() req,
+    @Req() req: { user: User },
   ): Promise<MedicalRecordResponseDto> {
     // Crear el registro médico
     const createdRecord = await this.medicalRecordsService.create(
