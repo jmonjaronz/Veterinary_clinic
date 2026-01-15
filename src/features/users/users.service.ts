@@ -61,6 +61,7 @@ export class UsersService {
                 person_id,
                 user_type,
                 hashed_password,
+                companyId: company_id
             });
     
             return this.userRepository.save(user);
