@@ -38,7 +38,7 @@ export class OpinionService {
     return plainToInstance(OpinionResponseDto, saved, { excludeExtraneousValues: true });
   }
 
-  async findAll(filter: OpinionFilterDto = new OpinionFilterDto()) {
+  async findAll(companyId: number, filter: OpinionFilterDto = new OpinionFilterDto()) {
     const {
       page = 1,
       per_page = 10,
@@ -57,7 +57,8 @@ export class OpinionService {
       .leftJoinAndSelect('opinion.medical_record', 'medical_record')
       .leftJoinAndSelect('opinion.pet', 'pet')
       .leftJoinAndSelect('opinion.owner', 'owner')
-      .leftJoinAndSelect('opinion.user', 'user');
+      .leftJoinAndSelect('opinion.user', 'user')
+      .where('user.company_id = :companyId', { companyId });
 
     if (medical_record_id) query.andWhere('opinion.medical_record_id = :medical_record_id', { medical_record_id });
     if (pet_id) query.andWhere('opinion.pet_id = :pet_id', { pet_id });
@@ -104,21 +105,27 @@ export class OpinionService {
     };
   }
 
-  async findOne(id: number): Promise<OpinionResponseDto> {
-    const opinion = await this.opinionRepository.findOne({
-      where: { id },
-      relations: ['medical_record', 'pet', 'owner', 'user'],
-    });
-    if (!opinion) throw new NotFoundException(`Opinión con ID ${id} no encontrada`);
-
+  async findOne(id: number, companyId: number): Promise<OpinionResponseDto> {
+    const opinion = await this.findOneQuery(id, companyId);
     return plainToInstance(OpinionResponseDto, opinion, { excludeExtraneousValues: true });
   }
 
-  async update(id: number, dto: UpdateOpinionDto): Promise<OpinionResponseDto> {
-    const opinion = await this.opinionRepository.findOne({ where: { id } });
-    if (!opinion) {
-      throw new NotFoundException(`Opinión con ID ${id} no encontrada`);
-    }
+  private async findOneQuery(id: number, companyId: number) {
+    const opinion = await this.opinionRepository.createQueryBuilder('opinion')
+      .leftJoinAndSelect('opinion.medical_record', 'medical_record')
+      .leftJoinAndSelect('opinion.pet', 'pet')
+      .leftJoinAndSelect('opinion.owner', 'owner')
+      .leftJoinAndSelect('opinion.user', 'user')
+      .where('opinion.id = :id', { id })
+      .andWhere('user.company_id = :companyId', { companyId }).getOne();
+
+    if(!opinion) throw new NotFoundException(`Opinión con ID ${id} no encontrada`);
+
+    return opinion;
+  }
+
+  async update(id: number, dto: UpdateOpinionDto, companyId: number): Promise<OpinionResponseDto> {
+    const opinion = await this.findOneQuery(id, companyId);
 
     Object.assign(opinion, dto);
 
@@ -126,29 +133,33 @@ export class OpinionService {
     return plainToInstance(OpinionResponseDto, saved, { excludeExtraneousValues: true });
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.opinionRepository.softDelete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Opinión con ID ${id} no encontrada`);
-    }
+  async remove(id: number, companyId: number): Promise<void> {
+    await this.findOneQuery(id, companyId);
+    await this.opinionRepository.softDelete(id);
   }
 
   // 📌 Servicios adicionales de búsqueda por relaciones
 
-  async findByMedicalRecord(id: number, filter?: OpinionFilterDto) {
-    const record = await this.medicalRecordRepository.findOne({ where: { id } });
+  async findByMedicalRecord(id: number, companyId:number, filter?: OpinionFilterDto) {
+    const record = await this.medicalRecordRepository.createQueryBuilder('medical_record')
+      .leftJoin('medical_record.user', 'user')
+      .where('medical_record.id = :id', { id })
+      .andWhere('user.company_id = :companyId', { companyId })
+      .getOne();
+
     if (!record) {
       throw new NotFoundException(`Registro médico con ID ${id} no encontrado`);
     }
 
-    return this.findAll(Object.assign(new OpinionFilterDto(), filter, { medical_record_id: id }));
+    return this.findAll(companyId, Object.assign(new OpinionFilterDto(), filter, { medical_record_id: id }));
   }
 
-  async findByPet(id: number, filter?: OpinionFilterDto) {
-    return this.findAll(Object.assign(new OpinionFilterDto(), filter, { pet_id: id }));
+  async findByPet(id: number, companyId: number, filter?: OpinionFilterDto) {
+    return this.findAll(companyId, Object.assign(new OpinionFilterDto(), filter, { pet_id: id }));
+
   }
 
-  async findByOwner(id: number, filter?: OpinionFilterDto) {
-    return this.findAll(Object.assign(new OpinionFilterDto(), filter, { owner_id: id }));
+  async findByOwner(id: number, companyId: number, filter?: OpinionFilterDto) {
+    return this.findAll(companyId, Object.assign(new OpinionFilterDto(), filter, { owner_id: id }));
   }
 }
