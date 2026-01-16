@@ -228,8 +228,84 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     return this.findAll(filters);
   }
 
-  async findClients(filterDto?: PersonFilterDto) {
-    return this.findByRole('cliente', filterDto);
+  async findClients(companyId: number, filterDto?: PersonFilterDto) {
+    // Usar un objeto por defecto si filterDto es undefined
+    const filters = filterDto || new PersonFilterDto();
+
+    const queryBuilder = this.personRepository.createQueryBuilder('person')
+      .leftJoin('person.pets', 'pet')
+      .leftJoin('pet.appointments', 'appointment')
+      .leftJoin('pet.hospitalizations', 'hospitalization')
+      .where('appointment.companyId = :companyId OR hospitalization.companyId = :companyId' , { companyId });
+    
+    if (filters.full_name) {
+      queryBuilder.andWhere('person.full_name ILIKE :full_name', {
+        full_name: `%${filters.full_name}%`,
+      });
+    }
+
+    if (filters.email) {
+      queryBuilder.andWhere('person.email ILIKE :email', {
+        email: `%${filters.email}%`,
+      });
+    }
+
+    if (filters.dni) {
+      queryBuilder.andWhere('person.dni ILIKE :dni', {
+        dni: `%${filters.dni}%`,
+      });
+    }
+
+    if (filters.role) {
+      queryBuilder.andWhere('person.role = :role', { role: filters.role });
+    }
+
+    queryBuilder
+      .groupBy('person.id')
+      .addGroupBy('person.full_name')
+      .addGroupBy('person.email')
+      .addGroupBy('person.dni')
+      .addGroupBy('person.phone_number')
+      .addGroupBy('person.address')
+      .addGroupBy('person.role')
+      .addGroupBy('person.created_at')
+      .addGroupBy('person.updatedAt')
+      .addGroupBy('person.deletedAt');
+    
+
+    // Calcular skip para paginación
+    const skip = (filters.page - 1) * filters.per_page;
+    queryBuilder.skip(skip).take(filters.per_page).orderBy('person.id', 'DESC');
+
+    // Buscar personas con filtros y paginación
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    // Calcular metadatos de paginación
+    const lastPage = Math.ceil(total / filters.per_page);
+
+    return {
+      data,
+      meta: {
+        total,
+        per_page: filters.per_page,
+        current_page: filters.page,
+        last_page: lastPage,
+        from: skip + 1,
+        to: skip + data.length,
+      },
+      links: {
+        first: `?page=1&per_page=${filters.per_page}`,
+        last: `?page=${lastPage}&per_page=${filters.per_page}`,
+        prev:
+          filters.page > 1
+            ? `?page=${filters.page - 1}&per_page=${filters.per_page}`
+            : null,
+        next:
+          filters.page < lastPage
+            ? `?page=${filters.page + 1}&per_page=${filters.per_page}`
+            : null,
+      },
+    };
   }
 
   async findStaff(filterDto?: PersonFilterDto) {

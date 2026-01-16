@@ -203,8 +203,8 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Get('clients')
-    findClients(@Query() filterDto: PersonFilterDto) {
-        return this.personsService.findClients(filterDto);
+    findClients(@CompanyId() companyId: number, @Query() filterDto: PersonFilterDto) {
+        return this.personsService.findClients(companyId,filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
