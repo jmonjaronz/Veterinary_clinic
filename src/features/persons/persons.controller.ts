@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { PersonsService } from './persons.service';
 import { DniSearchService } from './dni-search.service';
 import { CreatePersonDto } from './dto/create-person.dto';
@@ -30,10 +30,6 @@ export class PersonsController {
         @Query('create') create?: string // Query param para determinar si crear o solo buscar
     ) {
         const finalRole = role || 'cliente';
-
-        if(finalRole === 'staff' && !companyId) {
-            throw new BadRequestException('El ID de la empresa es requerido para el rol staff');
-        }
         
         // Buscar primero en nuestra base de datos
         const existingPersons = await this.personsService.findAll({
