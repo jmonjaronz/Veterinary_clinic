@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository, Like, FindOptionsWhere, EntityManager } from 'typeorm';
 import { Person } from './entities/person.entity';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
@@ -24,10 +24,12 @@ constructor(
     private readonly usersService: UsersService,
   ) {}
 /** 🔹 Crear persona y, si es STAFF, crearle usuario automáticamente (solo si no existe ni está eliminado) */
-async create(createPersonDto: CreatePersonDto): Promise<Person> {
+async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise<Person> {
   // Crear y guardar la persona
-  const person = this.personRepository.create(createPersonDto);
-  const savedPerson = await this.personRepository.save(person);
+  const personRepo = manager ? manager.getRepository(Person) : this.personRepository;
+
+  const person = personRepo.create(createPersonDto);
+  const savedPerson = await personRepo.save(person);
 
   // Solo si el rol es STAFF
   if (savedPerson.role === 'staff') {
@@ -41,7 +43,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
       }
 
       // Buscar usuario existente (activo o eliminado)
-      const existingUser = await this.usersService.findByUsername(savedPerson.dni);
+      const existingUser = await this.usersService.findByUsername(savedPerson.dni, manager);
 
       // ⚠️ Si ya existe (activo o eliminado), no crear otro
       if (existingUser) {
@@ -62,7 +64,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
         company_id: createPersonDto.company_id as number,
         user_type: savedPerson.dni,        // 👈 corregido (no debe ser el DNI)
         password,                  // UsersService se encarga de hashear internamente
-      });
+      }, manager);
 
       console.log(
         `✅ Usuario staff creado automáticamente para ${savedPerson.full_name} (user_type: staff, username: ${savedPerson.dni}, password: ${password})`,
@@ -87,7 +89,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
             company_id: createPersonDto.company_id as number,
             user_type: savedPerson.dni,
             password,
-          });
+          }, manager);
 
           console.log(
             `✅ Usuario staff creado tras detección de error previo para ${savedPerson.full_name} (username: ${savedPerson.dni})`,
@@ -173,8 +175,9 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     };
   }
 
-  async findOne(id: number): Promise<Person> {
-    const person = await this.personRepository.findOne({
+  async findOne(id: number, manager?: EntityManager): Promise<Person> {
+    const repo = manager ? manager.getRepository(Person) : this.personRepository;
+    const person = await repo.findOne({
       where: { id },
       relations: ['pets'], // 👈 Incluimos la relación aquí
     });
@@ -186,12 +189,13 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     return person;
   }
 
-  async update(id: number, updatePersonDto: UpdatePersonDto): Promise<Person> {
-    const person = await this.findOne(id);
+  async update(id: number, updatePersonDto: UpdatePersonDto, manager?: EntityManager): Promise<Person> {
+    const repo = manager ? manager.getRepository(Person) : this.personRepository;
+    const person = await this.findOne(id, manager);
 
     Object.assign(person, updatePersonDto);
 
-    return this.personRepository.save(person);
+    return repo.save(person);
   }
 
   async remove(id: number): Promise<void> {
