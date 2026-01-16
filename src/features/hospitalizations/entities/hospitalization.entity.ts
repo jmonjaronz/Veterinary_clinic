@@ -27,16 +27,15 @@ export class Hospitalization {
   @Column()
   veterinarian_id: number;
 
-  @ManyToOne(() => Veterinarian)
-  @JoinColumn({ name: 'veterinarian_id' })
-  veterinarian: Veterinarian;
-
   @Column({name: 'company_id'})
   companyId: number;
-  
+
   @ManyToOne(() => Veterinarian)
-  @JoinColumn({ name: 'company_id' })
-  company: Veterinarian;
+  @JoinColumn([
+    { name: 'veterinarian_id', referencedColumnName: 'personId' }, 
+    { name: 'company_id', referencedColumnName: 'companyId' }
+  ])
+  veterinarian: Veterinarian;
 
   @Column()
   reason: string;
