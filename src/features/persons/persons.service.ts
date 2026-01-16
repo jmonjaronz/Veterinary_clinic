@@ -238,7 +238,9 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
 
     const queryBuilder = this.personRepository.createQueryBuilder('person')
       .leftJoin('person.pets', 'pet')
+      .withDeleted()
       .leftJoin('pet.appointments', 'appointment')
+      .withDeleted()
       .leftJoin('pet.hospitalizations', 'hospitalization')
       .where('appointment.companyId = :companyId OR hospitalization.companyId = :companyId' , { companyId });
     
