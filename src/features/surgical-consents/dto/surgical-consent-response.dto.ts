@@ -2,6 +2,8 @@ import { Appointment } from '../../appointments/entities/appointment.entity';
 import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
 import { ProcedureType } from '../entities/procedure-type.entity';
+import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
+import { Company } from 'src/features/companies/entities/company.entity';
 
 export class SurgicalConsentResponseDto {
     id: number;
@@ -12,7 +14,9 @@ export class SurgicalConsentResponseDto {
     owner_id: number;
     owner?: Person;
     veterinarian_id: number;
-    veterinarian?: Person;
+    veterinarian?: Veterinarian;
+    companyId: number;
+    company?: Company;
     procedure_type_id?: number;
     procedureType?: ProcedureType;
     custom_procedure_type?: string;

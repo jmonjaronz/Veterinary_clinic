@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsEmail, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail, IsOptional, ValidateIf, IsNumber } from 'class-validator';
 
 export class CreatePersonDto {
     @IsNotEmpty({ message: 'El nombre completo es requerido' })
@@ -24,4 +24,9 @@ export class CreatePersonDto {
     @IsOptional()
     @IsString({ message: 'El rol debe ser una cadena de texto' })
     role?: string;
+
+    @ValidateIf((person: CreatePersonDto) => person.role === 'staff')
+    @IsNotEmpty({message: 'El ID de la empresa es requerido para el rol staff. Añade la propiedad company_id'})
+    @IsNumber({}, {message: 'El ID de la empresa debe ser un número'})
+    company_id?: number;
 }

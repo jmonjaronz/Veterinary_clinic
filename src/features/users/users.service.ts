@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { Person } from '../persons/entities/person.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserFilterDto } from './dto/user-filter.dto';
+import { Company } from '../companies/entities/company.entity';
 
 @Injectable()
 export class UsersService {
@@ -15,19 +16,39 @@ export class UsersService {
         private readonly userRepository: Repository<User>,
         @InjectRepository(Person)
         private readonly personRepository: Repository<Person>,
+        @InjectRepository(Company)
+        private readonly companyRepository: Repository<Company>,
     ) {}
 
-    async create(createUserDto: CreateUserDto): Promise<User> {
-        const { person_id, user_type, password } = createUserDto;
-    
+    async create(createUserDto: CreateUserDto, manager?: EntityManager): Promise<User> {
+        const userRepo = manager ? manager.getRepository(User) : this.userRepository;
+        const personRepo = manager ? manager.getRepository(Person) : this.personRepository;
+        const companyRepo = manager ? manager.getRepository(Company) : this.companyRepository;
+
+        const { person_id, company_id, user_type, password } = createUserDto;
+
         // Verificar si la persona existe
-        const person = await this.personRepository.findOne({ where: { id: person_id } });
+        const person = await personRepo.findOne({
+            where: { id: person_id },
+        });
         if (!person) {
-            throw new NotFoundException(`Persona con ID ${person_id} no encontrada`);
+            throw new NotFoundException(
+                `Persona con ID ${person_id} no encontrada`,
+            );
+        }
+
+        //Verrificar si la empresa existe
+        const company = await companyRepo.findOne({
+            where: { id: company_id },
+        });
+        if (!company) {
+            throw new NotFoundException(
+                `Empresa con ID ${company_id} no encontrada`,
+            );
         }
     
         // Verificar si ya existe un usuario con ese user_type
-        const existingUser = await this.userRepository.findOne({ where: { user_type } });
+        const existingUser = await userRepo.findOne({ where: { user_type } });
         if (existingUser) {
             throw new ConflictException(`Ya existe un usuario con el tipo ${user_type}`);
         }
@@ -40,13 +61,14 @@ export class UsersService {
             const hashed_password = await bcrypt.hash(password, salt);
     
             // Crear el usuario
-            const user = this.userRepository.create({
+            const user = userRepo.create({
                 person_id,
                 user_type,
                 hashed_password,
+                companyId: company_id
             });
     
-            return this.userRepository.save(user);
+            return userRepo.save(user);
         } catch (error) {
             // Lanzar una excepción más específica
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -71,8 +93,9 @@ export class UsersService {
         // Construir la consulta con relaciones
         const queryBuilder = this.userRepository
             .createQueryBuilder('user')
-            .leftJoinAndSelect('user.person', 'person');
-        
+            .leftJoinAndSelect('user.person', 'person')
+            .leftJoinAndSelect('user.company', 'company');
+
         // Aplicar filtros
         if (user_type) {
             queryBuilder.andWhere('user.user_type LIKE :user_type', { user_type: `%${user_type}%` });
@@ -125,9 +148,9 @@ export class UsersService {
     }
 
     async findOne(id: number): Promise<User> {
-        const user = await this.userRepository.findOne({ 
+        const user = await this.userRepository.findOne({
             where: { id },
-            relations: ['person'],
+            relations: ['person', 'company'],
         });
 
         if (!user) {
@@ -137,8 +160,10 @@ export class UsersService {
         return user;
     }
 
-    async findByUsername(username: string): Promise<User> {
-        const user = await this.userRepository.findOne({ 
+    async findByUsername(username: string, manager?: EntityManager | null): Promise<User> {
+        const repo = manager ? manager.getRepository(User) : this.userRepository;
+
+        const user = await repo.findOne({ 
             where: { user_type: username },
             relations: ['person'],
         });

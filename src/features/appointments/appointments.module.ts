@@ -4,10 +4,10 @@ import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
 import { Appointment } from './entities/appointment.entity';
 import { Pet } from '../pets/entities/pet.entity';
-import { Person } from '../persons/entities/person.entity';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Appointment, Pet, Person])],
+    imports: [TypeOrmModule.forFeature([Appointment, Pet, Veterinarian])],
     controllers: [AppointmentsController],
     providers: [AppointmentsService],
     exports: [AppointmentsService],

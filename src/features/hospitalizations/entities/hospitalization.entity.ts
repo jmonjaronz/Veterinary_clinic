@@ -9,8 +9,8 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { Pet } from '../../pets/entities/pet.entity';
-import { Person } from '../../persons/entities/person.entity';
 import { User } from 'src/features/users/entities/user.entity';
+import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
 
 @Entity({ name: 'hospitalizations' })
 export class Hospitalization {
@@ -27,9 +27,15 @@ export class Hospitalization {
   @Column()
   veterinarian_id: number;
 
-  @ManyToOne('Person')
-  @JoinColumn({ name: 'veterinarian_id' })
-  veterinarian: Person;
+  @Column({name: 'company_id'})
+  companyId: number;
+
+  @ManyToOne(() => Veterinarian)
+  @JoinColumn([
+    { name: 'veterinarian_id', referencedColumnName: 'personId' }, 
+    { name: 'company_id', referencedColumnName: 'companyId' }
+  ])
+  veterinarian: Veterinarian;
 
   @Column()
   reason: string;

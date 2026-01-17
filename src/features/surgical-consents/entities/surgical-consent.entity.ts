@@ -12,6 +12,7 @@ import { Pet } from '../../pets/entities/pet.entity';
 import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ProcedureType } from './procedure-type.entity';
+import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
 
 @Entity({ name: 'surgical_consents' })
 export class SurgicalConsent {
@@ -41,10 +42,16 @@ export class SurgicalConsent {
 
   @Column()
   veterinarian_id: number;
+  
+  @Column({name: 'company_id'})
+  companyId: number;
 
-  @ManyToOne(() => Person)
-  @JoinColumn({ name: 'veterinarian_id' })
-  veterinarian: Person;
+  @ManyToOne(() => Veterinarian)
+  @JoinColumn([
+    { name: 'veterinarian_id', referencedColumnName: 'personId' },
+    { name: 'company_id', referencedColumnName: 'companyId' }
+  ])
+  veterinarian: Veterinarian;
 
   @Column({ nullable: true })
   procedure_type_id: number;

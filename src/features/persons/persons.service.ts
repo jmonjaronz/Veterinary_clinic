@@ -6,13 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository, Like, FindOptionsWhere, EntityManager } from 'typeorm';
 import { Person } from './entities/person.entity';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { UsersService } from '../users/users.service';
-import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class PersonsService {
@@ -25,10 +24,12 @@ constructor(
     private readonly usersService: UsersService,
   ) {}
 /** 🔹 Crear persona y, si es STAFF, crearle usuario automáticamente (solo si no existe ni está eliminado) */
-async create(createPersonDto: CreatePersonDto): Promise<Person> {
+async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise<Person> {
   // Crear y guardar la persona
-  const person = this.personRepository.create(createPersonDto);
-  const savedPerson = await this.personRepository.save(person);
+  const personRepo = manager ? manager.getRepository(Person) : this.personRepository;
+
+  const person = personRepo.create(createPersonDto);
+  const savedPerson = await personRepo.save(person);
 
   // Solo si el rol es STAFF
   if (savedPerson.role === 'staff') {
@@ -42,7 +43,7 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
       }
 
       // Buscar usuario existente (activo o eliminado)
-      const existingUser = await this.usersService.findByUsername(savedPerson.dni);
+      const existingUser = await this.usersService.findByUsername(savedPerson.dni, manager);
 
       // ⚠️ Si ya existe (activo o eliminado), no crear otro
       if (existingUser) {
@@ -60,9 +61,10 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
 
       await this.usersService.create({
         person_id: savedPerson.id,
+        company_id: createPersonDto.company_id as number,
         user_type: savedPerson.dni,        // 👈 corregido (no debe ser el DNI)
         password,                  // UsersService se encarga de hashear internamente
-      });
+      }, manager);
 
       console.log(
         `✅ Usuario staff creado automáticamente para ${savedPerson.full_name} (user_type: staff, username: ${savedPerson.dni}, password: ${password})`,
@@ -84,9 +86,10 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
 
           await this.usersService.create({
             person_id: savedPerson.id,
+            company_id: createPersonDto.company_id as number,
             user_type: savedPerson.dni,
             password,
-          });
+          }, manager);
 
           console.log(
             `✅ Usuario staff creado tras detección de error previo para ${savedPerson.full_name} (username: ${savedPerson.dni})`,
@@ -172,8 +175,9 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     };
   }
 
-  async findOne(id: number): Promise<Person> {
-    const person = await this.personRepository.findOne({
+  async findOne(id: number, manager?: EntityManager): Promise<Person> {
+    const repo = manager ? manager.getRepository(Person) : this.personRepository;
+    const person = await repo.findOne({
       where: { id },
       relations: ['pets'], // 👈 Incluimos la relación aquí
     });
@@ -185,12 +189,13 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     return person;
   }
 
-  async update(id: number, updatePersonDto: UpdatePersonDto): Promise<Person> {
-    const person = await this.findOne(id);
+  async update(id: number, updatePersonDto: UpdatePersonDto, manager?: EntityManager): Promise<Person> {
+    const repo = manager ? manager.getRepository(Person) : this.personRepository;
+    const person = await this.findOne(id, manager);
 
     Object.assign(person, updatePersonDto);
 
-    return this.personRepository.save(person);
+    return repo.save(person);
   }
 
   async remove(id: number): Promise<void> {
@@ -227,8 +232,86 @@ async create(createPersonDto: CreatePersonDto): Promise<Person> {
     return this.findAll(filters);
   }
 
-  async findClients(filterDto?: PersonFilterDto) {
-    return this.findByRole('cliente', filterDto);
+  async findClients(companyId: number, filterDto?: PersonFilterDto) {
+    // Usar un objeto por defecto si filterDto es undefined
+    const filters = filterDto || new PersonFilterDto();
+
+    const queryBuilder = this.personRepository.createQueryBuilder('person')
+      .leftJoin('person.pets', 'pet')
+      .withDeleted()
+      .leftJoin('pet.appointments', 'appointment')
+      .withDeleted()
+      .leftJoin('pet.hospitalizations', 'hospitalization')
+      .where('appointment.companyId = :companyId OR hospitalization.companyId = :companyId' , { companyId });
+    
+    if (filters.full_name) {
+      queryBuilder.andWhere('person.full_name ILIKE :full_name', {
+        full_name: `%${filters.full_name}%`,
+      });
+    }
+
+    if (filters.email) {
+      queryBuilder.andWhere('person.email ILIKE :email', {
+        email: `%${filters.email}%`,
+      });
+    }
+
+    if (filters.dni) {
+      queryBuilder.andWhere('person.dni ILIKE :dni', {
+        dni: `%${filters.dni}%`,
+      });
+    }
+
+    if (filters.role) {
+      queryBuilder.andWhere('person.role = :role', { role: filters.role });
+    }
+
+    queryBuilder
+      .groupBy('person.id')
+      .addGroupBy('person.full_name')
+      .addGroupBy('person.email')
+      .addGroupBy('person.dni')
+      .addGroupBy('person.phone_number')
+      .addGroupBy('person.address')
+      .addGroupBy('person.role')
+      .addGroupBy('person.created_at')
+      .addGroupBy('person.updatedAt')
+      .addGroupBy('person.deletedAt');
+    
+
+    // Calcular skip para paginación
+    const skip = (filters.page - 1) * filters.per_page;
+    queryBuilder.skip(skip).take(filters.per_page).orderBy('person.id', 'DESC');
+
+    // Buscar personas con filtros y paginación
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    // Calcular metadatos de paginación
+    const lastPage = Math.ceil(total / filters.per_page);
+
+    return {
+      data,
+      meta: {
+        total,
+        per_page: filters.per_page,
+        current_page: filters.page,
+        last_page: lastPage,
+        from: skip + 1,
+        to: skip + data.length,
+      },
+      links: {
+        first: `?page=1&per_page=${filters.per_page}`,
+        last: `?page=${lastPage}&per_page=${filters.per_page}`,
+        prev:
+          filters.page > 1
+            ? `?page=${filters.page - 1}&per_page=${filters.per_page}`
+            : null,
+        next:
+          filters.page < lastPage
+            ? `?page=${filters.page + 1}&per_page=${filters.per_page}`
+            : null,
+      },
+    };
   }
 
   async findStaff(filterDto?: PersonFilterDto) {

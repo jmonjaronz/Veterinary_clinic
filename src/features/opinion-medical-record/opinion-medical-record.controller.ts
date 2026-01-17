@@ -18,6 +18,7 @@ import { OpinionFilterDto } from './dto/opinion-medical-record-filter.dto';
 import { OpinionService } from './opinion-medical-record.service';
 import { OpinionResponseDto } from './dto/opinion-medical-records-response.dto';
 import { UpdateOpinionDto } from './dto/update-opinion-medical-record.dto';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 // 👇 extendemos el Request de Express para tipar req.user
 interface AuthenticatedRequest extends Request {
@@ -39,39 +40,41 @@ export class OpinionController {
 
   @Get()
   findAll(
+    @CompanyId() companyId: number,
     @Query() filterDto: OpinionFilterDto,
     @Query('medical_record_id') medicalRecordId?: string,
     @Query('pet_id') petId?: string,
     @Query('owner_id') ownerId?: string,
   ) {
     if (medicalRecordId) {
-      return this.opinionService.findByMedicalRecord(+medicalRecordId, filterDto);
+      return this.opinionService.findByMedicalRecord(+medicalRecordId, companyId, filterDto);
     }
     if (petId) {
-      return this.opinionService.findByPet(+petId, filterDto);
+      return this.opinionService.findByPet(+petId, companyId, filterDto);
     }
     if (ownerId) {
-      return this.opinionService.findByOwner(+ownerId, filterDto);
+      return this.opinionService.findByOwner(+ownerId,companyId, filterDto);
     }
 
-    return this.opinionService.findAll(filterDto);
+    return this.opinionService.findAll(companyId, filterDto);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<OpinionResponseDto> {
-    return this.opinionService.findOne(+id);
+  findOne(@Param('id') id: string, @CompanyId() companyId: number): Promise<OpinionResponseDto> {
+    return this.opinionService.findOne(+id, companyId);
   }
 
   @Patch(':id')
   update(
     @Param('id') id: string,
+    @CompanyId() companyId: number,
     @Body() dto: UpdateOpinionDto,
   ): Promise<OpinionResponseDto> {
-    return this.opinionService.update(+id, dto);
+    return this.opinionService.update(+id, dto, companyId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.opinionService.remove(+id);
+  remove(@Param('id') id: string, @CompanyId() companyId: number) {
+    return this.opinionService.remove(+id, companyId);
   }
 }

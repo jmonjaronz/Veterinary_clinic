@@ -8,10 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not } from 'typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { Pet } from '../pets/entities/pet.entity';
-import { Person } from '../persons/entities/person.entity';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentFilterDto } from './dto/appointment-filter.dto';
+import { User } from '../users/entities/user.entity';
+import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
 
 @Injectable()
 export class AppointmentsService {
@@ -20,13 +21,13 @@ export class AppointmentsService {
     private readonly appointmentRepository: Repository<Appointment>,
     @InjectRepository(Pet)
     private readonly petRepository: Repository<Pet>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
+    @InjectRepository(Veterinarian)
+    private readonly veterinarianRepository: Repository<Veterinarian>
   ) {}
 
   async create(
     createAppointmentDto: CreateAppointmentDto,
-    loggedUser: any, // o mejor: User si tienes el tipo importado
+    loggedUser: User, // o mejor: User si tienes el tipo importado
   ): Promise<Appointment> {
     const { pet_id, veterinarian_id, appointment_type, date } =
       createAppointmentDto;
@@ -38,18 +39,12 @@ export class AppointmentsService {
     }
 
     // Verificar si el veterinario existe y es staff
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarian_id },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarian_id },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarian_id} no encontrada`,
-      );
-    }
-
-    if (veterinarian.role !== 'staff') {
-      throw new BadRequestException(
-        `La persona con ID ${veterinarian_id} no es un miembro del staff`,
+        `Veterinario con ID ${veterinarian_id} no encontrado`,
       );
     }
 
@@ -64,6 +59,7 @@ export class AppointmentsService {
         veterinarian_id,
         date: Between(startTime, endTime),
         status: 'programada',
+        companyId: loggedUser.companyId
       },
     });
 
@@ -76,6 +72,7 @@ export class AppointmentsService {
     // Buscar último correlativo (el numérico más alto) y aumentar en uno
     const lastAppointment = await this.appointmentRepository
       .createQueryBuilder('appointment')
+      .where('appointment.companyId = :company_id', { company_id: loggedUser.companyId })
       .orderBy('appointment.id', 'DESC')
       .limit(1)
       .getOne();
@@ -99,13 +96,14 @@ export class AppointmentsService {
       document: createAppointmentDto.document,
       user_id: loggedUser.id,
       correlative: nextCorrelative,
+      companyId: loggedUser.companyId,
     });
     console.log(appointment);
 
     return this.appointmentRepository.save(appointment);
   }
 
-  async findAll(filterDto?: AppointmentFilterDto) {
+  async findAll(companyId: number, filterDto?: AppointmentFilterDto) {
     // Usar un objeto por defecto si filterDto es undefined
     const filters = filterDto || new AppointmentFilterDto();
 
@@ -116,6 +114,9 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian');
+
+    // Filtro empresa
+    queryBuilder.where('appointment.companyId = :company_id', { company_id: companyId });
 
     // Aplicar filtros básicos de cita
     if (filters.pet_id) {
@@ -224,11 +225,15 @@ export class AppointmentsService {
     };
   }
 
-  async findOne(id: number): Promise<Appointment> {
-    const appointment = await this.appointmentRepository.findOne({
-      where: { id },
-      relations: ['pet', 'pet.owner', 'veterinarian'],
-    });
+  async findOne(id: number, companyId: number): Promise<Appointment> {
+    const appointment = await this.appointmentRepository.createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.pet', 'pet')
+      .leftJoinAndSelect('appointment.user', 'user')
+      .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .where('appointment.id = :id', { id })
+      .andWhere('appointment.companyId = :company_id', { company_id: companyId })
+      .getOne();
 
     if (!appointment) {
       throw new NotFoundException(`Cita con ID ${id} no encontrada`);
@@ -239,6 +244,7 @@ export class AppointmentsService {
 
   async findByPet(
     petId: number,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si la mascota existe
@@ -254,20 +260,21 @@ export class AppointmentsService {
     filters.pet_id = petId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByVeterinarian(
     veterinarianId: number,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarianId} no encontrada`,
+        `Veterinario con ID ${veterinarianId} no encontrado`,
       );
     }
 
@@ -278,22 +285,23 @@ export class AppointmentsService {
     filters.veterinarian_id = veterinarianId;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async findByVeterinarianDateRange(
     veterinarianId: number,
     startDate: Date,
     endDate: Date,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Verificar si el veterinario existe
-    const veterinarian = await this.personRepository.findOne({
-      where: { id: veterinarianId },
+    const veterinarian = await this.veterinarianRepository.findOne({
+      where: { personId: veterinarianId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
-        `Persona con ID ${veterinarianId} no encontrada`,
+        `Veterinario con ID ${veterinarianId} no encontrado`,
       );
     }
 
@@ -308,10 +316,10 @@ export class AppointmentsService {
     filters.date_end = endDate;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
-  async findUpcoming(filterDto?: AppointmentFilterDto): Promise<any> {
+  async findUpcoming(companyId: number, filterDto?: AppointmentFilterDto): Promise<any> {
     // Crear una copia del filtro o uno nuevo si no hay
     const filters = filterDto ? { ...filterDto } : new AppointmentFilterDto();
 
@@ -320,7 +328,7 @@ export class AppointmentsService {
     filters.status = 'programada';
 
     // Usar el método findAll con los filtros, pero con un ordenamiento personalizado
-    const result = await this.findAll(filters);
+    //const result = await this.findAll(companyId, filters);
 
     // El ordenamiento para citas próximas debe ser ASC por fecha
     const queryBuilder = this.appointmentRepository
@@ -328,7 +336,8 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
-      .where('appointment.date >= :now', { now: new Date() })
+      .where('appointment.companyId = :company_id', {company_id: companyId})
+      .andWhere('appointment.date >= :now', { now: new Date() })
       .andWhere('appointment.status = :status', { status: 'programada' });
 
     // Aplicar filtros adicionales si existen
@@ -356,6 +365,8 @@ export class AppointmentsService {
         pet_name: `%${filters.pet_name}%`,
       });
     }
+
+    queryBuilder.andWhere('user.company_id = :company_id', { company_id: companyId });
 
     // Calcular skip para paginación
     const skip = (filters.page - 1) * filters.per_page;
@@ -398,8 +409,9 @@ export class AppointmentsService {
   }
 
   async findByDateRange(
-    startDate: Date,
-    endDate: Date,
+    startDate: Date | string,
+    endDate: Date | string,
+    companyId: number,
     filterDto?: AppointmentFilterDto,
   ): Promise<any> {
     // Crear una copia del filtro o uno nuevo si no hay
@@ -410,14 +422,15 @@ export class AppointmentsService {
     filters.date_end = endDate;
 
     // Usar el método findAll con los filtros
-    return this.findAll(filters);
+    return this.findAll(companyId, filters);
   }
 
   async update(
     id: number,
     updateAppointmentDto: UpdateAppointmentDto,
+    companyId: number
   ): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+    const appointment = await this.findOne(id, companyId);
 
     // Si se intenta cambiar la mascota, verificar que exista
     if (
@@ -440,19 +453,13 @@ export class AppointmentsService {
       updateAppointmentDto.veterinarian_id &&
       updateAppointmentDto.veterinarian_id !== appointment.veterinarian_id
     ) {
-      const veterinarian = await this.personRepository.findOne({
-        where: { id: updateAppointmentDto.veterinarian_id },
+      const veterinarian = await this.veterinarianRepository.findOne({
+        where: { personId: updateAppointmentDto.veterinarian_id },
       });
 
       if (!veterinarian) {
         throw new NotFoundException(
           `Persona con ID ${updateAppointmentDto.veterinarian_id} no encontrada`,
-        );
-      }
-
-      if (veterinarian.role !== 'staff') {
-        throw new BadRequestException(
-          `La persona con ID ${updateAppointmentDto.veterinarian_id} no es un miembro del staff`,
         );
       }
     }
@@ -475,6 +482,7 @@ export class AppointmentsService {
           veterinarian_id: veterinarianId,
           date: Between(startTime, endTime),
           status: 'programada',
+          companyId
         },
       });
 
@@ -491,8 +499,8 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async complete(id: number, document?: string): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+  async complete(id: number, companyId:number, document?: string): Promise<Appointment> {
+    const appointment = await this.findOne(id, companyId);
 
     if (appointment.status === 'completada') {
       throw new BadRequestException(`Esta cita ya está completada`);
@@ -510,8 +518,8 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async cancel(id: number): Promise<Appointment> {
-    const appointment = await this.findOne(id);
+  async cancel(id: number, companyId: number): Promise<Appointment> {
+    const appointment = await this.findOne(id, companyId);
 
     if (appointment.status === 'completada') {
       throw new BadRequestException(`No se puede cancelar una cita completada`);
@@ -526,15 +534,15 @@ export class AppointmentsService {
     return this.appointmentRepository.save(appointment);
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.appointmentRepository.softDelete(id);
-
-    if (result.affected === 0) {
+  async remove(id: number, companyId: number): Promise<void> {
+    const result = await this.appointmentRepository.softDelete({id, companyId});
+    if(result.affected === 0) {
       throw new NotFoundException(`Cita con ID ${id} no encontrada`);
     }
   }
 
   async findAppointmentsWithoutMedicalRecord(
+    companyId: number,
     correlative?: string,
     appointment_type?: string,
   ): Promise<Appointment[]> {
@@ -543,7 +551,11 @@ export class AppointmentsService {
       .leftJoin('medical_records', 'mr', 'mr.appointment_id = appointment.id')
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('appointment.user', 'user')
       .where('mr.id IS NULL'); // Solo las que no tienen atención
+    
+    // Filtro empresa
+    query.andWhere('appointment.companyId = :company_id', { company_id: companyId });
 
     if (correlative) {
       query.andWhere('UPPER(appointment.correlative) LIKE :correlative', {

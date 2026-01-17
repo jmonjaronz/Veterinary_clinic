@@ -15,6 +15,8 @@ import { Person } from '../../persons/entities/person.entity';
 import { Species } from '../../species/entities/species.entity';
 import { PetImage } from './pet-image.entity';
 import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
+import { Appointment } from 'src/features/appointments/entities/appointment.entity';
+import { Hospitalization } from 'src/features/hospitalizations/entities/hospitalization.entity';
 
 @Entity({ name: 'pets' })
 export class Pet {
@@ -71,6 +73,12 @@ export class Pet {
     (opinionMedicalRecord) => opinionMedicalRecord.pet,
   )
   opinions: OpinionMedicalRecord[];
+
+  @OneToMany(() => Appointment, (appointment) => appointment.pet)
+  appointments: Appointment[];
+
+  @OneToMany(() => Hospitalization, (hospitalization) => hospitalization.pet)
+  hospitalizations: Hospitalization[];
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;

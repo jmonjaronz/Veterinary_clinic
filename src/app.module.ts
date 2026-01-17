@@ -19,6 +19,8 @@ import { AppConfigModule } from './common/config/config.module';
 import { DatabaseModule } from './common/database/database.module';
 import { AuthModule } from './common/auth/auth.module';
 import { OpinionModule } from './features/opinion-medical-record/opinion-medical-record.module';
+import { CompaniesModule } from './features/companies/companies.module';
+import { VeterinariansModule } from './features/veterinarians/veterinarians.module';
 
 @Module({
   imports: [
@@ -41,8 +43,9 @@ import { OpinionModule } from './features/opinion-medical-record/opinion-medical
     VaccinesModule,
     TreatmentsModule,
     SurgicalConsentsModule,
-    OpinionModule
-    
+    OpinionModule,
+    CompaniesModule,
+    VeterinariansModule
   ],
   controllers: [],
   providers: [],

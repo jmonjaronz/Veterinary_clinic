@@ -6,7 +6,17 @@ export interface UserResponse {
     role: string;
 }
 
+export interface CompanyResponse {
+    id: number;
+    name: string;
+    ruc: string;
+    email: string;
+    phone: string;
+    address: string;
+}
+
 export interface LoginResponse {
     access_token: string;
     user: UserResponse;
+    company: CompanyResponse;
 }

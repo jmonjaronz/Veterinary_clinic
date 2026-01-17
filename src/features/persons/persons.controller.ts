@@ -5,6 +5,7 @@ import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { PersonFilterDto } from './dto/person-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('persons')
 export class PersonsController {
@@ -24,6 +25,7 @@ export class PersonsController {
     @Get('search-dni/:dni')
     async searchAndCreatePersonByDni(
         @Param('dni') dni: string, 
+        @CompanyId() companyId: number,
         @Query('role') role?: string,
         @Query('create') create?: string // Query param para determinar si crear o solo buscar
     ) {
@@ -57,7 +59,8 @@ export class PersonsController {
                     email: personData.email || '',
                     phone_number: personData.phone_number || '',
                     address: personData.address || '',
-                    role: finalRole
+                    role: finalRole,
+                    ...(finalRole === 'staff' ? { company_id: companyId } : {}) 
                 };
                 
                 const newPerson = await this.personsService.create(createPersonDto);
@@ -79,7 +82,7 @@ export class PersonsController {
                         email: personData.email || '',
                         phone_number: personData.phone_number || '',
                         address: personData.address || '',
-                        role: finalRole
+                        role: finalRole,
                     },
                     source: 'api'
                 };
@@ -99,9 +102,10 @@ export class PersonsController {
     @Get('search-staff/:dni')
     async searchStaffByDni(
         @Param('dni') dni: string,
+        @CompanyId() companyId: number,
         @Query('create') create?: string
     ) {
-        return this.searchAndCreatePersonByDni(dni, 'staff', create);
+        return this.searchAndCreatePersonByDni(dni, companyId, 'staff', create);
     }
 
     // Endpoint más simple para búsqueda sin crear
@@ -199,8 +203,8 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Get('clients')
-    findClients(@Query() filterDto: PersonFilterDto) {
-        return this.personsService.findClients(filterDto);
+    findClients(@CompanyId() companyId: number, @Query() filterDto: PersonFilterDto) {
+        return this.personsService.findClients(companyId,filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
