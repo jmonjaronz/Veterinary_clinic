@@ -11,7 +11,7 @@ import {
 import { MedicalRecord } from '../../medical-records/entities/medical-record.entity';
 import { User } from 'src/features/users/entities/user.entity';
 import { Pet } from 'src/features/pets/entities/pet.entity';
-import { Person } from 'src/features/persons/entities/person.entity'; // 👈 el propietario
+import { Client } from 'src/features/clients/entities/client.entity';
 
 @Entity({ name: 'opinions' })
 export class OpinionMedicalRecord {
@@ -42,9 +42,9 @@ export class OpinionMedicalRecord {
   @Column()
   owner_id: number;
 
-  @ManyToOne(() => Person, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Client, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })
-  owner: Person;
+  owner: Client;
 
   @Column({ type: 'text' })
   comment: string; // Comentario del tutor
