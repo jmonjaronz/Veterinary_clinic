@@ -19,10 +19,11 @@ import { OpinionService } from './opinion-medical-record.service';
 import { OpinionResponseDto } from './dto/opinion-medical-records-response.dto';
 import { UpdateOpinionDto } from './dto/update-opinion-medical-record.dto';
 import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
+import { User } from '../users/entities/user.entity';
 
 // 👇 extendemos el Request de Express para tipar req.user
 interface AuthenticatedRequest extends Request {
-  user: any;
+  user: User;
 }
 
 @UseGuards(JwtAuthGuard)
