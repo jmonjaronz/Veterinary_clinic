@@ -21,6 +21,7 @@ import { AuthModule } from './common/auth/auth.module';
 import { OpinionModule } from './features/opinion-medical-record/opinion-medical-record.module';
 import { CompaniesModule } from './features/companies/companies.module';
 import { VeterinariansModule } from './features/veterinarians/veterinarians.module';
+import { ClientsModule } from './features/clients/clients.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { VeterinariansModule } from './features/veterinarians/veterinarians.modu
     SurgicalConsentsModule,
     OpinionModule,
     CompaniesModule,
-    VeterinariansModule
+    VeterinariansModule,
+    ClientsModule
   ],
   controllers: [],
   providers: [],
