@@ -317,4 +317,20 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
   async findStaff(filterDto?: PersonFilterDto) {
     return this.findByRole('staff', filterDto);
   }
+
+  async findByDni(dni: string): Promise<Person | null> {
+    const person = await this.personRepository.findOne({
+      where: { dni },
+    });
+
+    return person || null;
+  }
+
+  async findByEmail(email: string): Promise<Person | null> {
+    const person = await this.personRepository.findOne({
+      where: { email },
+    });
+
+    return person || null;
+  }
 }
