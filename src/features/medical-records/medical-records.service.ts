@@ -173,6 +173,7 @@ export class MedicalRecordsService {
       .createQueryBuilder('mr')
       .leftJoinAndSelect('mr.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
       .leftJoinAndSelect('mr.user', 'user')
       .leftJoinAndSelect('mr.opinions', 'opinions')
       .leftJoinAndSelect('mr.veterinarian', 'veterinarian')
@@ -536,7 +537,7 @@ export class MedicalRecordsService {
 
     // ==== Verificar mascota ====
     const pet = await this.petRepository.findOne({
-      where: { id: petId },
+      where: { id: petId, owner: { companyId } },
       relations: ['owner', 'species'],
     });
 
@@ -563,6 +564,7 @@ export class MedicalRecordsService {
         'opinions.user.person',
         'pet',
         'pet.owner',
+        'owner.person',
         'user',
       ],
       order: { appointment_date: 'DESC' },
@@ -644,7 +646,7 @@ export class MedicalRecordsService {
         species: pet.species.name,
         breed: pet.breed,
         age: pet.age,
-        owner_name: pet.owner.full_name,
+        owner_name: pet.owner.person.full_name,
       },
       timeline,
     };

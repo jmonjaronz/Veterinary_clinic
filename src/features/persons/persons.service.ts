@@ -139,7 +139,6 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
     // Buscar personas con filtros y paginación
     const [data, total] = await this.personRepository.findAndCount({
       where,
-      relations: ['pets'], // 👈 aquí agregamos la relación
       skip,
       take: filters.per_page,
       order: {
@@ -178,8 +177,7 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
   async findOne(id: number, manager?: EntityManager): Promise<Person> {
     const repo = manager ? manager.getRepository(Person) : this.personRepository;
     const person = await repo.findOne({
-      where: { id },
-      relations: ['pets'], // 👈 Incluimos la relación aquí
+      where: { id }
     });
 
     if (!person) {
@@ -198,17 +196,17 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
     return repo.save(person);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, companyId: number): Promise<void> {
     const person = await this.personRepository.findOne({
-      where: { id },
-      relations: ['pets'],
+      where: { id, clients: { companyId }},
+      relations: ['clients', 'clients.pets'],
     });
 
     if (!person) {
       throw new NotFoundException(`Persona con ID ${id} no encontrada`);
     }
 
-    if (person.pets && person.pets.length > 0) {
+    if (person.clients && person.clients.length > 0) {
       throw new BadRequestException(
         `No se puede eliminar: la persona tiene mascotas asociadas`,
       );
@@ -230,88 +228,6 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
     filters.role = role;
 
     return this.findAll(filters);
-  }
-
-  async findClients(companyId: number, filterDto?: PersonFilterDto) {
-    // Usar un objeto por defecto si filterDto es undefined
-    const filters = filterDto || new PersonFilterDto();
-
-    const queryBuilder = this.personRepository.createQueryBuilder('person')
-      .leftJoin('person.pets', 'pet')
-      .withDeleted()
-      .leftJoin('pet.appointments', 'appointment')
-      .withDeleted()
-      .leftJoin('pet.hospitalizations', 'hospitalization')
-      .where('appointment.companyId = :companyId OR hospitalization.companyId = :companyId' , { companyId });
-    
-    if (filters.full_name) {
-      queryBuilder.andWhere('person.full_name ILIKE :full_name', {
-        full_name: `%${filters.full_name}%`,
-      });
-    }
-
-    if (filters.email) {
-      queryBuilder.andWhere('person.email ILIKE :email', {
-        email: `%${filters.email}%`,
-      });
-    }
-
-    if (filters.dni) {
-      queryBuilder.andWhere('person.dni ILIKE :dni', {
-        dni: `%${filters.dni}%`,
-      });
-    }
-
-    if (filters.role) {
-      queryBuilder.andWhere('person.role = :role', { role: filters.role });
-    }
-
-    queryBuilder
-      .groupBy('person.id')
-      .addGroupBy('person.full_name')
-      .addGroupBy('person.email')
-      .addGroupBy('person.dni')
-      .addGroupBy('person.phone_number')
-      .addGroupBy('person.address')
-      .addGroupBy('person.role')
-      .addGroupBy('person.created_at')
-      .addGroupBy('person.updatedAt')
-      .addGroupBy('person.deletedAt');
-    
-
-    // Calcular skip para paginación
-    const skip = (filters.page - 1) * filters.per_page;
-    queryBuilder.skip(skip).take(filters.per_page).orderBy('person.id', 'DESC');
-
-    // Buscar personas con filtros y paginación
-    const [data, total] = await queryBuilder.getManyAndCount();
-
-    // Calcular metadatos de paginación
-    const lastPage = Math.ceil(total / filters.per_page);
-
-    return {
-      data,
-      meta: {
-        total,
-        per_page: filters.per_page,
-        current_page: filters.page,
-        last_page: lastPage,
-        from: skip + 1,
-        to: skip + data.length,
-      },
-      links: {
-        first: `?page=1&per_page=${filters.per_page}`,
-        last: `?page=${lastPage}&per_page=${filters.per_page}`,
-        prev:
-          filters.page > 1
-            ? `?page=${filters.page - 1}&per_page=${filters.per_page}`
-            : null,
-        next:
-          filters.page < lastPage
-            ? `?page=${filters.page + 1}&per_page=${filters.per_page}`
-            : null,
-      },
-    };
   }
 
   async findStaff(filterDto?: PersonFilterDto) {

@@ -14,6 +14,7 @@ import { UpdateSurgicalConsentDto } from './dto/update-surgical-consent.dto';
 import { SurgicalConsentFilterDto } from './dto/surgical-consent-filter.dto';
 import { SurgicalConsentResponseDto } from './dto/surgical-consent-response.dto';
 import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
+import { ClientsService } from '../clients/clients.service';
 
 @Injectable()
 export class SurgicalConsentsService {
@@ -31,6 +32,7 @@ export class SurgicalConsentsService {
         @InjectRepository(Appointment)
         private readonly appointmentRepository: Repository<Appointment>,
         private readonly configService: ConfigService,
+        private readonly clientService: ClientsService
     ) {}
 
     async create(createSurgicalConsentDto: CreateSurgicalConsentDto, companyId: number): Promise<SurgicalConsentResponseDto> {
@@ -54,31 +56,23 @@ export class SurgicalConsentsService {
 
         // 2. Validar que la mascota existe
         const pet = await this.petRepository.findOne({ 
-            where: { id: pet_id },
+            where: { id: pet_id, owner: { companyId} },
             relations: ['owner'] 
         });
         if (!pet) {
             throw new NotFoundException(`Mascota con ID ${pet_id} no encontrada`);
         }
 
-        // 3. Validar que el propietario existe y coincide con la mascota
-        const owner = await this.personRepository.findOne({ 
-            where: { id: owner_id } 
-        });
-        if (!owner) {
-            throw new NotFoundException(`Propietario con ID ${owner_id} no encontrado`);
+        // 3. Validar que el propietario existe y es su mascota
+        const clientWithPets = await this.clientService.findOne(owner_id, companyId, ['pets']);
+
+        const hasPet = clientWithPets.pets.some(p => p.id === pet_id)
+        if (!hasPet) {
+            throw new BadRequestException(`La mascota con ID ${pet_id} no pertenece al propietario con ID ${owner_id}`);
         }
 
-        if (pet.owner_id !== owner_id) {
-            throw new BadRequestException(`El propietario con ID ${owner_id} no es el dueño de la mascota con ID ${pet_id}`);
-        }
 
-        // 4. Verificar que el propietario tenga rol 'cliente'
-        if (owner.role !== 'cliente') {
-            throw new BadRequestException(`La persona con ID ${owner_id} no es un cliente`);
-        }
-
-        // 5. Validar que el veterinario existe 
+        // 4. Validar que el veterinario existe 
         const veterinarian = await this.veterinarianRepository.findOne({ 
             where: { personId: veterinarian_id, companyId } 
         });
@@ -144,6 +138,7 @@ export class SurgicalConsentsService {
             .leftJoinAndSelect('consent.appointment', 'appointment')
             .leftJoinAndSelect('consent.pet', 'pet')
             .leftJoinAndSelect('consent.owner', 'owner')
+            .leftJoinAndSelect('owner.person', 'person')
             .leftJoinAndSelect('consent.veterinarian', 'veterinarian')
             .leftJoinAndSelect('consent.procedureType', 'procedureType')
             .where('consent.companyId = :companyId', { companyId });
@@ -261,7 +256,7 @@ export class SurgicalConsentsService {
     async findOne(id: number, companyId: number): Promise<SurgicalConsentResponseDto> {
         const consent = await this.surgicalConsentRepository.findOne({
             where: { id, companyId },
-            relations: ['appointment', 'pet', 'owner', 'veterinarian', 'procedureType'],
+            relations: ['appointment', 'pet', 'owner', 'owner.person', 'veterinarian', 'procedureType'],
         });
         
         if (!consent) {
@@ -273,7 +268,12 @@ export class SurgicalConsentsService {
 
     async findByPet(petId: number, companyId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Verificar si la mascota existe
-        const pet = await this.petRepository.findOne({ where: { id: petId } });
+        const pet = await this.petRepository.findOne(
+            { 
+                where: { id: petId, owner: { companyId } }, 
+                relations: ['owner'] 
+            }
+        );
         if (!pet) {
             throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
         }
@@ -290,10 +290,7 @@ export class SurgicalConsentsService {
     
     async findByOwner(ownerId: number, companyId: number, filterDto?: SurgicalConsentFilterDto): Promise<any> {
         // Verificar si el propietario existe
-        const owner = await this.personRepository.findOne({ where: { id: ownerId } });
-        if (!owner) {
-            throw new NotFoundException(`Propietario con ID ${ownerId} no encontrado`);
-        }
+        await this.clientService.findOne(ownerId, companyId, undefined, `Propietario con ID ${ownerId} no encontrado`);
 
         // Crear una copia del filtro o uno nuevo si no hay
         const filters = filterDto ? { ...filterDto } : new SurgicalConsentFilterDto();
@@ -384,7 +381,7 @@ export class SurgicalConsentsService {
         if (updateSurgicalConsentDto.pet_id && 
             updateSurgicalConsentDto.pet_id !== consent.pet_id) {
             const pet = await this.petRepository.findOne({ 
-                where: { id: updateSurgicalConsentDto.pet_id },
+                where: { id: updateSurgicalConsentDto.pet_id, owner: { companyId } },
                 relations: ['owner']
             });
             
@@ -402,26 +399,20 @@ export class SurgicalConsentsService {
         // 3. Validar propietario si se intenta cambiar
         if (updateSurgicalConsentDto.owner_id && 
             updateSurgicalConsentDto.owner_id !== consent.owner_id) {
-            const owner = await this.personRepository.findOne({ 
-                where: { id: updateSurgicalConsentDto.owner_id } 
-            });
+            await this.clientService.findOne(updateSurgicalConsentDto.owner_id, companyId, undefined, `Propietario con ID ${updateSurgicalConsentDto.owner_id} no encontrado`);
             
-            if (!owner) {
-                throw new NotFoundException(`Propietario con ID ${updateSurgicalConsentDto.owner_id} no encontrado`);
-            }
-
-            // Verificar que sea un cliente
-            if (owner.role !== 'cliente') {
-                throw new BadRequestException(`La persona con ID ${updateSurgicalConsentDto.owner_id} no es un cliente`);
-            }
-
             // Si se cambia el propietario pero no la mascota, verificar que la mascota pertenezca al nuevo propietario
             const petId = updateSurgicalConsentDto.pet_id || consent.pet_id;
             const pet = await this.petRepository.findOne({ 
-                where: { id: petId }
+                where: { id: petId, owner: { companyId } },
+                relations: ['owner']
             });
+
+            if(!pet) {
+                throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
+            }
             
-            if (pet && pet.owner_id !== updateSurgicalConsentDto.owner_id) {
+            if (pet.owner_id !== updateSurgicalConsentDto.owner_id) {
                 throw new BadRequestException(`La mascota con ID ${petId} no pertenece al propietario con ID ${updateSurgicalConsentDto.owner_id}`);
             }
         }
@@ -524,7 +515,7 @@ export class SurgicalConsentsService {
     async generateConsentPdf(id: number, companyId: number): Promise<{ fileName: string, filePath: string }> {
         const consent = await this.surgicalConsentRepository.findOne({
             where: { id, companyId },
-            relations: ['pet', 'pet.species', 'owner', 'veterinarian', 'procedureType'],
+            relations: ['pet', 'pet.species', 'owner', 'owner.person', 'veterinarian', 'procedureType'],
         });
         
         if (!consent) {
@@ -578,7 +569,7 @@ export class SurgicalConsentsService {
             </div>
             
             <div class="data-box">
-                <p><strong>Propietario:</strong> ${consent.owner.full_name}</p>
+                <p><strong>Propietario:</strong> ${consent.owner.person.full_name}</p>
                 <p><strong>Hora:</strong> ${new Date().getHours()}:${new Date().getMinutes()}</p>
                 <p><strong>Fecha:</strong> ${new Date().toLocaleDateString()}</p>
             </div>

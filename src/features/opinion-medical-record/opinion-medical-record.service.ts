@@ -9,6 +9,8 @@ import { OpinionResponseDto } from './dto/opinion-medical-records-response.dto';
 import { UpdateOpinionDto } from './dto/update-opinion-medical-record.dto';
 import { OpinionMedicalRecord } from './entities/opinion-medical-record.entity';
 import { CreateOpinionDto } from './dto/create-opinion-medical-record.dto';
+import { User } from '../users/entities/user.entity';
+import { ClientsService } from '../clients/clients.service';
 
 @Injectable()
 export class OpinionService {
@@ -17,9 +19,13 @@ export class OpinionService {
     private readonly opinionRepository: Repository<OpinionMedicalRecord>,
     @InjectRepository(MedicalRecord)
     private readonly medicalRecordRepository: Repository<MedicalRecord>,
+    private readonly clientService: ClientsService
   ) {}
 
-  async create(dto: CreateOpinionDto, loggedUser: any): Promise<OpinionResponseDto> {
+  async create(dto: CreateOpinionDto, loggedUser: User, companyId: number): Promise<OpinionResponseDto> {
+    // Validar que el cliente (owner) exista y pertenezca a la compañía
+    await this.clientService.findOne(dto.owner_id, companyId);
+
     const record = await this.medicalRecordRepository.findOne({
       where: { id: dto.medical_record_id },
     });
@@ -57,6 +63,7 @@ export class OpinionService {
       .leftJoinAndSelect('opinion.medical_record', 'medical_record')
       .leftJoinAndSelect('opinion.pet', 'pet')
       .leftJoinAndSelect('opinion.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
       .leftJoinAndSelect('opinion.user', 'user')
       .where('user.company_id = :companyId', { companyId });
 
@@ -115,6 +122,7 @@ export class OpinionService {
       .leftJoinAndSelect('opinion.medical_record', 'medical_record')
       .leftJoinAndSelect('opinion.pet', 'pet')
       .leftJoinAndSelect('opinion.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
       .leftJoinAndSelect('opinion.user', 'user')
       .where('opinion.id = :id', { id })
       .andWhere('user.company_id = :companyId', { companyId }).getOne();

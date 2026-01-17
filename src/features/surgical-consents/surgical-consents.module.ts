@@ -13,6 +13,7 @@ import { ProcedureTypesService } from './procedure-types.service';
 import { diskStorage } from 'multer';
 import { existsSync, mkdirSync } from 'fs';
 import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
+import { ClientsModule } from '../clients/clients.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Veterinarian } from '../veterinarians/entities/veterinarian.entity';
       Appointment,
       Veterinarian
     ]),
+    ClientsModule,
     MulterModule.register({
       storage: diskStorage({
         destination: () => {

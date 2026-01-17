@@ -53,6 +53,7 @@ const query = this.treatmentRepository
   .leftJoinAndSelect('treatment.medical_record', 'medical_record')
   .leftJoinAndSelect('medical_record.pet', 'pet')
   .leftJoinAndSelect('pet.owner', 'owner')
+  .leftJoinAndSelect('owner.person', 'person')
   .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
   .leftJoinAndSelect('medical_record.opinions', 'opinions')
   .leftJoinAndSelect('opinions.user', 'user')

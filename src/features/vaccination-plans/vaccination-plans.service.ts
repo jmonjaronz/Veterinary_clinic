@@ -132,6 +132,7 @@ export class VaccinationPlansService {
             .createQueryBuilder('vp')
             .leftJoinAndSelect('vp.pet', 'pet')
             .leftJoinAndSelect('pet.owner', 'owner')
+            .leftJoinAndSelect('owner.person', 'person')
             .leftJoinAndSelect('vp.species_vaccination_plan', 'svp')
             .leftJoinAndSelect('svp.species', 'species')
             .leftJoinAndSelect('vp.vaccination_records', 'records')
@@ -228,6 +229,7 @@ export class VaccinationPlansService {
             relations: [
                 'pet', 
                 'pet.owner', 
+                'pet.owner.person',
                 'species_vaccination_plan', 
                 'species_vaccination_plan.species',
                 'vaccination_records',

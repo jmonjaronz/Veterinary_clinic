@@ -1,6 +1,6 @@
 import { PetImage } from '../entities/pet-image.entity';
-import { Person } from '../../persons/entities/person.entity';
 import { Species } from '../../species/entities/species.entity';
+import { Client } from 'src/features/clients/entities/client.entity';
 
 export interface PetImageResponseDto extends PetImage {
   url: string;  // URL completa para acceder a la imagen
@@ -18,7 +18,7 @@ export class PetResponseDto {
   weight: number;
   temperature: number;
   owner_id: number;
-  owner: Person;
+  owner: Client;
   description: string;
   photo: string | null;
   photoUrl: string | null;  // URL completa para la foto principal (campo legacy)

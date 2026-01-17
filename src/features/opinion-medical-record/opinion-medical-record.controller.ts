@@ -35,8 +35,9 @@ export class OpinionController {
   create(
     @Body() dto: CreateOpinionDto,
     @Req() req: AuthenticatedRequest,
+    @CompanyId() companyId: number,
   ): Promise<OpinionResponseDto> {
-    return this.opinionService.create(dto, req.user);
+    return this.opinionService.create(dto, req.user, companyId);
   }
 
   @Get()

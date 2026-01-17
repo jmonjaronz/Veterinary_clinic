@@ -8,6 +8,7 @@ import { UpdatePetDto } from './dto/update-pet.dto';
 import { PetFilterDto } from './dto/pet-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
 import { PetResponseDto } from './dto/pet-response.dto';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('pets')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -16,49 +17,51 @@ export class PetsController {
 
     @UseGuards(JwtAuthGuard)
     @Post()
-    create(@Body() createPetDto: CreatePetDto): Promise<PetResponseDto> {
-        return this.petsService.create(createPetDto);
+    create(@Body() createPetDto: CreatePetDto, @CompanyId() companyId: number): Promise<PetResponseDto> {
+        return this.petsService.create(createPetDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(
         @Query() filterDto: PetFilterDto,
+        @CompanyId() companyId: number,
         @Query('owner_id') ownerId?: string,
         @Query('species_id') speciesId?: string
     ) {
         // Si se proporcionan filtros específicos de propietario o especie
         if (ownerId) {
-            return this.petsService.findByOwner(+ownerId, filterDto);
+            return this.petsService.findByOwner(+ownerId, companyId, filterDto);
         }
         
         if (speciesId) {
-            return this.petsService.findBySpecies(+speciesId, filterDto);
+            return this.petsService.findBySpecies(+speciesId, companyId, filterDto);
         }
         
         // Caso genérico con todos los filtros posibles
-        return this.petsService.findAll(filterDto);
+        return this.petsService.findAll(companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
-    findOne(@Param('id') id: string): Promise<PetResponseDto> {
-        return this.petsService.findOne(+id);
+    findOne(@Param('id') id: string, @CompanyId() companyId: number): Promise<PetResponseDto> {
+        return this.petsService.findOne(+id, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Patch(':id')
     update(
         @Param('id') id: string, 
-        @Body() updatePetDto: UpdatePetDto
+        @Body() updatePetDto: UpdatePetDto,
+        @CompanyId() companyId: number
     ): Promise<PetResponseDto> {
-        return this.petsService.update(+id, updatePetDto);
+        return this.petsService.update(+id, updatePetDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
-    async remove(@Param('id') id: string): Promise<{ message: string }> {
-        await this.petsService.remove(+id);
+    async remove(@Param('id') id: string, @CompanyId() companyId: number): Promise<{ message: string }> {
+        await this.petsService.remove(+id, companyId);
         return { message: 'Mascota eliminada correctamente' };
     }
 
@@ -94,7 +97,8 @@ export class PetsController {
     uploadConsentDocument(
         @Param('id') id: string,
         @UploadedFile() file: Express.Multer.File,
+        @CompanyId() companyId: number
     ): Promise<PetResponseDto> {
-        return this.petsService.uploadConsentDocument(+id, file);
+        return this.petsService.uploadConsentDocument(+id, file, companyId);
     }
 }
