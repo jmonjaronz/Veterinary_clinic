@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsDate, IsString, IsOptional, IsEmpty } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsDate, IsString, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateAppointmentDto {

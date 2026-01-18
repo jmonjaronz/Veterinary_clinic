@@ -17,6 +17,7 @@ import { PetImage } from './pet-image.entity';
 import { OpinionMedicalRecord } from 'src/features/opinion-medical-record/entities/opinion-medical-record.entity';
 import { Appointment } from 'src/features/appointments/entities/appointment.entity';
 import { Hospitalization } from 'src/features/hospitalizations/entities/hospitalization.entity';
+import { Client } from 'src/features/clients/entities/client.entity';
 
 @Entity({ name: 'pets' })
 export class Pet {
@@ -55,9 +56,9 @@ export class Pet {
   @Column()
   owner_id: number;
 
-  @ManyToOne('Person', 'pets')
+  @ManyToOne(() => Client)
   @JoinColumn({ name: 'owner_id' })
-  owner: Person;
+  owner: Client;
 
   @Column({ type: 'text', nullable: true })
   description: string;

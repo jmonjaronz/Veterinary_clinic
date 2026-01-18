@@ -11,27 +11,21 @@ import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
 import { PetFilterDto } from './dto/pet-filter.dto';
 import { PetResponseDto } from './dto/pet-response.dto';
+import { ClientsService } from '../clients/clients.service';
 
 @Injectable()
 export class PetsService {
     constructor(
         @InjectRepository(Pet)
         private readonly petRepository: Repository<Pet>,
-        @InjectRepository(Person)
-        private readonly personRepository: Repository<Person>,
         @InjectRepository(Species)
         private readonly speciesRepository: Repository<Species>,
-        private readonly configService: ConfigService,
+        private readonly clientService: ClientsService
     ) {}
 
-    async create(createPetDto: CreatePetDto): Promise<PetResponseDto> {
+    async create(createPetDto: CreatePetDto, companyId: number): Promise<PetResponseDto> {
         // Verificar si el propietario existe
-        const owner = await this.personRepository.findOne({ 
-            where: { id: createPetDto.owner_id } 
-        });
-        if (!owner) {
-            throw new BadRequestException(`Propietario con ID ${createPetDto.owner_id} no encontrado`);
-        }
+        await this.clientService.findOne(createPetDto.owner_id, companyId, undefined, `Propietario con ID ${createPetDto.owner_id} no encontrado`);
     
         // Verificar si la especie existe
         const species = await this.speciesRepository.findOne({ 
@@ -62,11 +56,11 @@ export class PetsService {
         const savedPet = await this.petRepository.save(pet);
         
         // Buscar el pet guardado con sus relaciones para transformarlo
-        const petWithRelations = await this.findOne(savedPet.id);
+        const petWithRelations = await this.findOne(savedPet.id, companyId);
         return petWithRelations;
     }
 
-    async findAll(filterDto?: PetFilterDto) {
+    async findAll(companyId: number, filterDto?: PetFilterDto) {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new PetFilterDto();
         
@@ -74,8 +68,12 @@ export class PetsService {
         const queryBuilder = this.petRepository
             .createQueryBuilder('pet')
             .leftJoinAndSelect('pet.owner', 'owner')
+            .leftJoinAndSelect('owner.person', 'person')
             .leftJoinAndSelect('pet.species', 'species')
-            .leftJoinAndSelect('pet.images', 'images');
+            .leftJoinAndSelect('pet.images', 'images')
+            .leftJoin('pet.appointments', 'appointment')
+            .leftJoin('pet.hospitalizations', 'hospitalization')
+            .where('owner.companyId = :companyId', { companyId })
 
         // Aplicar filtros
         if (filters.name) {
@@ -188,10 +186,10 @@ export class PetsService {
         };
     }
 
-    async findOne(id: number): Promise<PetResponseDto> {
+    async findOne(id: number, companyId: number): Promise<PetResponseDto> {
         const pet = await this.petRepository.findOne({
-            where: { id },
-            relations: ['owner', 'species', 'images'],
+            where: { id, owner: { companyId } },
+            relations: ['owner', 'owner.person', 'species', 'images'],
         });
         
         if (!pet) {
@@ -201,7 +199,7 @@ export class PetsService {
         return this.transformPetResponse(pet);
     }      
 
-    async findByOwner(ownerId: number, filterDto?: PetFilterDto): Promise<any> {
+    async findByOwner(ownerId: number, companyId: number, filterDto?: PetFilterDto): Promise<any> {
         // Crea una copia del filtro
         const filters = filterDto ? { ...filterDto } : new PetFilterDto();
         
@@ -209,10 +207,10 @@ export class PetsService {
         filters.owner_id = ownerId;
         
         // Usa el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
     
-    async findBySpecies(speciesId: number, filterDto?: PetFilterDto): Promise<any> {
+    async findBySpecies(speciesId: number, companyId: number, filterDto?: PetFilterDto): Promise<any> {
         // Crea una copia del filtro
         const filters = filterDto ? { ...filterDto } : new PetFilterDto();
         
@@ -220,12 +218,12 @@ export class PetsService {
         filters.species_id = speciesId;
         
         // Usa el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
 
-    async update(id: number, updatePetDto: UpdatePetDto): Promise<PetResponseDto> {
+    async update(id: number, updatePetDto: UpdatePetDto, companyId: number): Promise<PetResponseDto> {
         const pet = await this.petRepository.findOne({
-            where: { id },
+            where: { id, owner: { companyId } },
             relations: ['owner', 'species', 'images'],
         });
         
@@ -235,12 +233,7 @@ export class PetsService {
 
         // Verificar si el propietario existe si se intenta cambiar
         if (updatePetDto.owner_id && updatePetDto.owner_id !== pet.owner_id) {
-            const owner = await this.personRepository.findOne({ 
-                where: { id: updatePetDto.owner_id } 
-            });
-            if (!owner) {
-                throw new BadRequestException(`Propietario con ID ${updatePetDto.owner_id} no encontrado`);
-            }
+            await this.clientService.findOne(updatePetDto.owner_id, companyId, undefined, `Propietario con ID ${updatePetDto.owner_id} no encontrado`);
         }
 
         // Verificar si la especie existe si se intenta cambiar
@@ -282,23 +275,28 @@ export class PetsService {
         await this.petRepository.save(pet);
         
         // Volver a buscar el pet con sus relaciones para transformarlo
-        return this.findOne(id);
+        return this.findOne(id, companyId);
     }
 
-    async remove(id: number): Promise<void> {
-        const result = await this.petRepository.softDelete(id);
+    async remove(id: number, companyId: number): Promise<void> {
+
+        const pet = await this.petRepository.findOne({
+            where: { id, owner: { companyId } },
+        });
         
-        if (result.affected === 0) {
+        if (!pet) {
             throw new NotFoundException(`Mascota con ID ${id} no encontrada`);
         }
+    
+        await this.petRepository.softDelete(id);
     }
 
     // Método para subir documento de consentimiento
-    async uploadConsentDocument(petId: number, file: Express.Multer.File): Promise<PetResponseDto> {
+    async uploadConsentDocument(petId: number, file: Express.Multer.File, companyId: number): Promise<PetResponseDto> {
         // Verificar si la mascota existe
         const pet = await this.petRepository.findOne({
-            where: { id: petId },
-            relations: ['owner', 'species', 'images'],
+            where: { id: petId, owner: { companyId } },
+            relations: ['owner', 'owner.person', 'species', 'images'],
         });
         
         if (!pet) {

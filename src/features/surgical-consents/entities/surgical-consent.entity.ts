@@ -13,6 +13,7 @@ import { Person } from '../../persons/entities/person.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ProcedureType } from './procedure-type.entity';
 import { Veterinarian } from 'src/features/veterinarians/entities/veterinarian.entity';
+import { Client } from 'src/features/clients/entities/client.entity';
 
 @Entity({ name: 'surgical_consents' })
 export class SurgicalConsent {
@@ -36,9 +37,9 @@ export class SurgicalConsent {
   @Column()
   owner_id: number;
 
-  @ManyToOne(() => Person)
+  @ManyToOne(() => Client)
   @JoinColumn({ name: 'owner_id' })
-  owner: Person;
+  owner: Client;
 
   @Column()
   veterinarian_id: number;

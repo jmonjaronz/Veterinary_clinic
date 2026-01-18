@@ -202,12 +202,6 @@ export class PersonsController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get('clients')
-    findClients(@CompanyId() companyId: number, @Query() filterDto: PersonFilterDto) {
-        return this.personsService.findClients(companyId,filterDto);
-    }
-
-    @UseGuards(JwtAuthGuard)
     @Get('staff')
     findStaff(@Query() filterDto: PersonFilterDto) {
         return this.personsService.findStaff(filterDto);
@@ -227,7 +221,7 @@ export class PersonsController {
 
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.personsService.remove(+id);
+    remove(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.personsService.remove(+id, companyId);
     }
 }

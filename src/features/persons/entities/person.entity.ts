@@ -8,7 +8,7 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { User } from 'src/features/users/entities/user.entity';
-import { Pet } from '../../pets/entities/pet.entity';
+import { Client } from 'src/features/clients/entities/client.entity';
 
 @Entity({ name: 'persons' })
 export class Person {
@@ -45,6 +45,6 @@ export class Person {
   @OneToMany('User', 'person')
   users: User[];
 
-  @OneToMany('Pet', 'owner')
-  pets: Pet[];
+  @OneToMany('Client', 'person')
+  clients: Client[];
 }

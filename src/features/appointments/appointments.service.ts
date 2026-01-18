@@ -40,7 +40,7 @@ export class AppointmentsService {
 
     // Verificar si el veterinario existe y es staff
     const veterinarian = await this.veterinarianRepository.findOne({
-      where: { personId: veterinarian_id },
+      where: { personId: veterinarian_id, companyId: loggedUser.companyId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
@@ -113,7 +113,10 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('appointment.veterinarian', 'veterinarian');
+      .leftJoinAndSelect('owner.person', 'person')
+      .withDeleted()
+      .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('veterinarian.person', 'person');
 
     // Filtro empresa
     queryBuilder.where('appointment.companyId = :company_id', { company_id: companyId });
@@ -230,7 +233,11 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
+      .withDeleted()
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .addSelect(['veterinarian.licenceNumber', 'veterinarian.createdAt', 'veterinarian.updatedAt', 'veterinarian.deletedAt'])
+      .leftJoinAndSelect('veterinarian.person', 'person')
       .where('appointment.id = :id', { id })
       .andWhere('appointment.companyId = :company_id', { company_id: companyId })
       .getOne();
@@ -335,6 +342,7 @@ export class AppointmentsService {
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
       .where('appointment.companyId = :company_id', {company_id: companyId})
       .andWhere('appointment.date >= :now', { now: new Date() })
@@ -448,18 +456,18 @@ export class AppointmentsService {
       }
     }
 
-    // Si se intenta cambiar el veterinario, verificar que exista y sea staff
+    // Si se intenta cambiar el veterinario, verificar que exista
     if (
       updateAppointmentDto.veterinarian_id &&
       updateAppointmentDto.veterinarian_id !== appointment.veterinarian_id
     ) {
       const veterinarian = await this.veterinarianRepository.findOne({
-        where: { personId: updateAppointmentDto.veterinarian_id },
+        where: { personId: updateAppointmentDto.veterinarian_id, companyId },
       });
 
       if (!veterinarian) {
         throw new NotFoundException(
-          `Persona con ID ${updateAppointmentDto.veterinarian_id} no encontrada`,
+          `Veterinario con ID ${updateAppointmentDto.veterinarian_id} no encontrado`,
         );
       }
     }

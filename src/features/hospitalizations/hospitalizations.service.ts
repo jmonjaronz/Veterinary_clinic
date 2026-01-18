@@ -41,7 +41,7 @@ export class HospitalizationsService {
 
     // Verificar si el veterinario existe
     const veterinarian = await this.veterinarianRepository.findOne({
-      where: { personId: veterinarian_id },
+      where: { personId: veterinarian_id, companyId: loggedUser.companyId },
     });
     if (!veterinarian) {
       throw new NotFoundException(
@@ -101,6 +101,7 @@ export class HospitalizationsService {
       .leftJoinAndSelect('hosp.pet', 'pet')
       .leftJoinAndSelect('hosp.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
+      .leftJoinAndSelect('owner.person', 'person')
       .leftJoinAndSelect('hosp.veterinarian', 'veterinarian')
       .where('hosp.companyId = :companyId', { companyId });
 
@@ -239,7 +240,7 @@ export class HospitalizationsService {
   async findOne(id: number, companyId: number): Promise<Hospitalization> {
     const hospitalization = await this.hospitalizationRepository.findOne({
       where: { id, companyId },
-      relations: ['pet', 'pet.owner', 'veterinarian'],
+      relations: ['pet', 'pet.owner', 'pet.owner.person', 'veterinarian'],
     });
 
     if (!hospitalization) {
@@ -364,7 +365,7 @@ export class HospitalizationsService {
         hospitalization.veterinarian_id
     ) {
       const veterinarian = await this.veterinarianRepository.findOne({
-        where: { personId: updateHospitalizationDto.veterinarian_id },
+        where: { personId: updateHospitalizationDto.veterinarian_id, companyId },
       });
 
       if (!veterinarian) {
