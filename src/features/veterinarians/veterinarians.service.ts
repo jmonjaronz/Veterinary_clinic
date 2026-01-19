@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { PersonsService } from "../persons/persons.service";
@@ -6,6 +6,7 @@ import { CreateVeterinarianDto } from "./dto/create-veterinarian.dto";
 import { UpdateVeterinarianDto } from "./dto/update-veterinarian.dto";
 import { VeterinarianFilterDto } from "./dto/veterinarian-filter.dto";
 import { Veterinarian } from "./entities/veterinarian.entity";
+import { Person } from "../persons/entities/person.entity";
 
 @Injectable()
 export class VeterinariansService {
@@ -23,9 +24,25 @@ export class VeterinariansService {
         return await this.dataSource.transaction(async manager => {
             const { licence_number, ...personFields } = createVeterinarianDto;
 
-            const person = await this.personsService.create(personFields, manager);
+            let person: Person | null = null;
+            if(createVeterinarianDto.dni) {
+                person = await this.personsService.findByDni(createVeterinarianDto.dni);
+            }
 
-            const veterinarian = await manager.save(Veterinarian, {
+            if(!person && createVeterinarianDto.email) {
+                person =  await this.personsService.findByEmail(createVeterinarianDto.email);
+            }
+
+            if(!person) {
+                person = await this.personsService.create(personFields, manager);
+            }
+
+            let veterinarian = await this.findOne(person.id, companyId)
+            if(veterinarian) {
+                throw new BadRequestException(`El veterinario ya existe para la persona con ID ${person.id} en la empresa`);
+            }
+
+            veterinarian = await manager.save(Veterinarian, {
                 personId: person.id,
                 companyId,
                 licenceNumber: licence_number
@@ -144,7 +161,7 @@ export class VeterinariansService {
             if (licence_number !== undefined) {
                 await manager.update(Veterinarian, 
                     { personId: veterinarianId, companyId },
-                    { licenceNumber: licence_number as string }
+                    { licenceNumber: licence_number }
                 );
             }
 
