@@ -62,8 +62,8 @@ export class VeterinariansService {
 
         const queryBuilder = this.veterinarianRepository
             .createQueryBuilder('veterinarian')
-            .leftJoinAndSelect('veterinarian.person', 'person')
-            .leftJoinAndSelect('veterinarian.company', 'company')
+            .innerJoinAndSelect('veterinarian.person', 'person')
+            .innerJoinAndSelect('veterinarian.company', 'company')
             .where('veterinarian.companyId = :companyId', { companyId });
 
         if (filters.full_name) {
