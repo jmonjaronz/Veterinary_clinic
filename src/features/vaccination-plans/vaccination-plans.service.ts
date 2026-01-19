@@ -132,7 +132,7 @@ export class VaccinationPlansService {
             .createQueryBuilder('vp')
             .leftJoinAndSelect('vp.pet', 'pet')
             .leftJoinAndSelect('pet.owner', 'owner')
-            .leftJoinAndSelect('owner.person', 'person')
+            .leftJoinAndSelect('owner.person', 'owner_person')
             .leftJoinAndSelect('vp.species_vaccination_plan', 'svp')
             .leftJoinAndSelect('svp.species', 'species')
             .leftJoinAndSelect('vp.vaccination_records', 'records')
@@ -156,7 +156,7 @@ export class VaccinationPlansService {
         
         // Filtros para la mascota relacionada
         if (filters.pet_name) {
-            queryBuilder.andWhere('pet.name LIKE :pet_name', { pet_name: `%${filters.pet_name}%` });
+            queryBuilder.andWhere('pet.name ILIKE :pet_name', { pet_name: `%${filters.pet_name}%` });
         }
         
         if (filters.owner_id) {
@@ -164,7 +164,7 @@ export class VaccinationPlansService {
         }
         
         if (filters.owner_name) {
-            queryBuilder.andWhere('owner.full_name LIKE :owner_name', { owner_name: `%${filters.owner_name}%` });
+            queryBuilder.andWhere('owner_person.full_name ILIKE :owner_name', { owner_name: `%${filters.owner_name}%` });
         }
         
         // Filtros para el plan de vacunación por especie
@@ -173,7 +173,7 @@ export class VaccinationPlansService {
         }
         
         if (filters.plan_name) {
-            queryBuilder.andWhere('svp.name LIKE :plan_name', { plan_name: `%${filters.plan_name}%` });
+            queryBuilder.andWhere('svp.name ILIKE :plan_name', { plan_name: `%${filters.plan_name}%` });
         }
 
         // Filtros para el plan de vacunación por especie
@@ -503,12 +503,12 @@ export class VaccinationPlansService {
         
         // Búsqueda por nombre de vacuna
         if (filters.vaccine_name) {
-            queryBuilder.andWhere('vaccine.name LIKE :vacName', { vacName: `%${filters.vaccine_name}%` });
+            queryBuilder.andWhere('vaccine.name ILIKE :vacName', { vacName: `%${filters.vaccine_name}%` });
         }
         
         // Búsqueda por contenido de notas
         if (filters.notes_contains) {
-            queryBuilder.andWhere('record.notes LIKE :notes', { notes: `%${filters.notes_contains}%` });
+            queryBuilder.andWhere('record.notes ILIKE :notes', { notes: `%${filters.notes_contains}%` });
         }
         
         // Calcular skip para paginación

@@ -60,16 +60,16 @@ export class SpeciesVaccinationPlansService {
         }
         
         if (filters.name) {
-            queryBuilder.andWhere('plan.name LIKE :name', { name: `%${filters.name}%` });
+            queryBuilder.andWhere('plan.name ILIKE :name', { name: `%${filters.name}%` });
         }
         
         if (filters.description) {
-            queryBuilder.andWhere('plan.description LIKE :description', { description: `%${filters.description}%` });
+            queryBuilder.andWhere('plan.description ILIKE :description', { description: `%${filters.description}%` });
         }
         
         // Filtro por nombre de especie (relación)
         if (filters.species_name) {
-            queryBuilder.andWhere('species.name LIKE :species_name', { species_name: `%${filters.species_name}%` });
+            queryBuilder.andWhere('species.name ILIKE :species_name', { species_name: `%${filters.species_name}%` });
         }
         
         // Calcular skip para paginación

@@ -61,7 +61,7 @@ export class NotificationsService {
         
         // Filtro por contenido del mensaje
         if (filters.message_contains) {
-            queryBuilder.andWhere('notification.message LIKE :message', { message: `%${filters.message_contains}%` });
+            queryBuilder.andWhere('notification.message ILIKE :message', { message: `%${filters.message_contains}%` });
         }
         
         // Filtro más simple para notificaciones leídas/no leídas
@@ -97,12 +97,12 @@ export class NotificationsService {
         
         // Filtros para usuario relacionado
         if (filters.user_type) {
-            queryBuilder.andWhere('user.user_type LIKE :user_type', { user_type: `%${filters.user_type}%` });
+            queryBuilder.andWhere('user.user_type ILIKE :user_type', { user_type: `%${filters.user_type}%` });
         }
         
         // Filtros para persona relacionada al usuario
         if (filters.person_name) {
-            queryBuilder.andWhere('person.full_name LIKE :person_name', { person_name: `%${filters.person_name}%` });
+            queryBuilder.andWhere('person.full_name ILIKE :person_name', { person_name: `%${filters.person_name}%` });
         }
         
         // Calcular skip para paginación

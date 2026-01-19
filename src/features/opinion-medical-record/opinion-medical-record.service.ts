@@ -81,10 +81,10 @@ export class OpinionService {
     }
 
     if (comment_contains) {
-      query.andWhere('opinion.comment LIKE :comment', { comment: `%${comment_contains}%` });
+      query.andWhere('opinion.comment ILIKE :comment', { comment: `%${comment_contains}%` });
     }
     if (observations_contains) {
-      query.andWhere('opinion.observations LIKE :obs', { obs: `%${observations_contains}%` });
+      query.andWhere('opinion.observations ILIKE :obs', { obs: `%${observations_contains}%` });
     }
 
     const skip = (page - 1) * per_page;

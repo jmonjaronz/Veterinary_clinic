@@ -113,10 +113,10 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('owner.person', 'person')
+      .leftJoinAndSelect('owner.person', 'owner_person')
       .withDeleted()
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
-      .leftJoinAndSelect('veterinarian.person', 'person');
+      .leftJoinAndSelect('veterinarian.person', 'veterinarian_person');
 
     // Filtro empresa
     queryBuilder.where('appointment.companyId = :company_id', { company_id: companyId });
@@ -164,7 +164,7 @@ export class AppointmentsService {
 
     // Filtros para la mascota relacionada
     if (filters.pet_name) {
-      queryBuilder.andWhere('pet.name LIKE :pet_name', {
+      queryBuilder.andWhere('pet.name ILIKE :pet_name', {
         pet_name: `%${filters.pet_name}%`,
       });
     }
@@ -176,14 +176,14 @@ export class AppointmentsService {
     }
 
     if (filters.owner_name) {
-      queryBuilder.andWhere('owner.full_name LIKE :owner_name', {
+      queryBuilder.andWhere('owner_person.full_name ILIKE :owner_name', {
         owner_name: `%${filters.owner_name}%`,
       });
     }
 
     // Filtros para el veterinario
     if (filters.veterinarian_name) {
-      queryBuilder.andWhere('veterinarian.full_name LIKE :vet_name', {
+      queryBuilder.andWhere('veterinarian_person.full_name ILIKE :vet_name', {
         vet_name: `%${filters.veterinarian_name}%`,
       });
     }
@@ -233,11 +233,11 @@ export class AppointmentsService {
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('appointment.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('owner.person', 'person')
+      .leftJoinAndSelect('owner.person', 'owner_person')
       .withDeleted()
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
       .addSelect(['veterinarian.licenceNumber', 'veterinarian.createdAt', 'veterinarian.updatedAt', 'veterinarian.deletedAt'])
-      .leftJoinAndSelect('veterinarian.person', 'person')
+      .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
       .where('appointment.id = :id', { id })
       .andWhere('appointment.companyId = :company_id', { company_id: companyId })
       .getOne();
@@ -342,8 +342,9 @@ export class AppointmentsService {
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('owner.person', 'person')
+      .leftJoinAndSelect('owner.person', 'owner_person')
       .leftJoinAndSelect('appointment.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
       .where('appointment.companyId = :company_id', {company_id: companyId})
       .andWhere('appointment.date >= :now', { now: new Date() })
       .andWhere('appointment.status = :status', { status: 'programada' });
@@ -369,7 +370,7 @@ export class AppointmentsService {
 
     // Aplicar los filtros de relaciones si existen
     if (filters.pet_name) {
-      queryBuilder.andWhere('pet.name LIKE :pet_name', {
+      queryBuilder.andWhere('pet.name ILIKE :pet_name', {
         pet_name: `%${filters.pet_name}%`,
       });
     }
@@ -566,14 +567,14 @@ export class AppointmentsService {
     query.andWhere('appointment.companyId = :company_id', { company_id: companyId });
 
     if (correlative) {
-      query.andWhere('UPPER(appointment.correlative) LIKE :correlative', {
+      query.andWhere('UPPER(appointment.correlative) ILIKE :correlative', {
         correlative: `%${correlative.toUpperCase()}%`,
       });
     }
 
     if (appointment_type) {
       query.andWhere(
-        'UPPER(appointment.appointment_type) LIKE :appointment_type',
+        'UPPER(appointment.appointment_type) ILIKE :appointment_type',
         {
           appointment_type: `%${appointment_type.toUpperCase()}%`,
         },

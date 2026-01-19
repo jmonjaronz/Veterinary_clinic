@@ -101,8 +101,9 @@ export class HospitalizationsService {
       .leftJoinAndSelect('hosp.pet', 'pet')
       .leftJoinAndSelect('hosp.user', 'user')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('owner.person', 'person')
+      .leftJoinAndSelect('owner.person', 'owner_person')
       .leftJoinAndSelect('hosp.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
       .where('hosp.companyId = :companyId', { companyId });
 
     // Aplicar filtros básicos
@@ -120,7 +121,7 @@ export class HospitalizationsService {
 
     // Filtro por razón de hospitalización
     if (filters.reason_contains) {
-      queryBuilder.andWhere('hosp.reason LIKE :reason', {
+      queryBuilder.andWhere('hosp.reason ILIKE :reason', {
         reason: `%${filters.reason_contains}%`,
       });
     }
@@ -172,7 +173,7 @@ export class HospitalizationsService {
 
     // Filtros para mascota
     if (filters.pet_name) {
-      queryBuilder.andWhere('pet.name LIKE :pet_name', {
+      queryBuilder.andWhere('pet.name ILIKE :pet_name', {
         pet_name: `%${filters.pet_name}%`,
       });
     }
@@ -185,14 +186,14 @@ export class HospitalizationsService {
     }
 
     if (filters.owner_name) {
-      queryBuilder.andWhere('owner.full_name LIKE :owner_name', {
+      queryBuilder.andWhere('owner_person.full_name ILIKE :owner_name', {
         owner_name: `%${filters.owner_name}%`,
       });
     }
 
     // Filtros para veterinario
     if (filters.veterinarian_name) {
-      queryBuilder.andWhere('veterinarian.full_name LIKE :vet_name', {
+      queryBuilder.andWhere('veterinarian_person.full_name ILIKE :vet_name', {
         vet_name: `%${filters.veterinarian_name}%`,
       });
     }

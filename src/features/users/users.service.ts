@@ -98,7 +98,7 @@ export class UsersService {
 
         // Aplicar filtros
         if (user_type) {
-            queryBuilder.andWhere('user.user_type LIKE :user_type', { user_type: `%${user_type}%` });
+            queryBuilder.andWhere('user.user_type ILIKE :user_type', { user_type: `%${user_type}%` });
         }
         
         if (person_id) {
@@ -106,11 +106,11 @@ export class UsersService {
         }
         
         if (full_name) {
-            queryBuilder.andWhere('person.full_name LIKE :full_name', { full_name: `%${full_name}%` });
+            queryBuilder.andWhere('person.full_name ILIKE :full_name', { full_name: `%${full_name}%` });
         }
         
         if (email) {
-            queryBuilder.andWhere('person.email LIKE :email', { email: `%${email}%` });
+            queryBuilder.andWhere('person.email ILIKE :email', { email: `%${email}%` });
         }
         
         // Calcular skip para paginación

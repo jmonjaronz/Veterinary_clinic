@@ -68,7 +68,7 @@ export class PetsService {
         const queryBuilder = this.petRepository
             .createQueryBuilder('pet')
             .leftJoinAndSelect('pet.owner', 'owner')
-            .leftJoinAndSelect('owner.person', 'person')
+            .leftJoinAndSelect('owner.person', 'owner_person')
             .leftJoinAndSelect('pet.species', 'species')
             .leftJoinAndSelect('pet.images', 'images')
             .leftJoin('pet.appointments', 'appointment')
@@ -77,7 +77,7 @@ export class PetsService {
 
         // Aplicar filtros
         if (filters.name) {
-            queryBuilder.andWhere('pet.name LIKE :name', { name: `%${filters.name}%` });
+            queryBuilder.andWhere('pet.name ILIKE :name', { name: `%${filters.name}%` });
         }
 
         if (filters.owner_id) {
@@ -89,7 +89,7 @@ export class PetsService {
         }
 
         if (filters.breed) {
-            queryBuilder.andWhere('pet.breed LIKE :breed', { breed: `%${filters.breed}%` });
+            queryBuilder.andWhere('pet.breed ILIKE :breed', { breed: `%${filters.breed}%` });
         }
 
         // Filtro por sexo
@@ -135,11 +135,11 @@ export class PetsService {
 
         // Filtros para propietario y especie (relaciones)
         if (filters.owner_name) {
-            queryBuilder.andWhere('owner.full_name LIKE :owner_name', { owner_name: `%${filters.owner_name}%` });
+            queryBuilder.andWhere('owner_person.full_name ILIKE :owner_name', { owner_name: `%${filters.owner_name}%` });
         }
 
         if (filters.species_name) {
-            queryBuilder.andWhere('species.name LIKE :species_name', { species_name: `%${filters.species_name}%` });
+            queryBuilder.andWhere('species.name ILIKE :species_name', { species_name: `%${filters.species_name}%` });
         }
 
         // Filtro para documento de consentimiento

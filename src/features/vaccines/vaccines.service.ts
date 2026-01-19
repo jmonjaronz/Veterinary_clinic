@@ -65,7 +65,7 @@ export class VaccinesService {
         }
         
         if (filters.name) {
-            queryBuilder.andWhere('vaccine.name LIKE :name', { name: `%${filters.name}%` });
+            queryBuilder.andWhere('vaccine.name ILIKE :name', { name: `%${filters.name}%` });
         }
         
         // Filtros de rango para edad de aplicación

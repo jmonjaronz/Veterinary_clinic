@@ -138,8 +138,9 @@ export class SurgicalConsentsService {
             .leftJoinAndSelect('consent.appointment', 'appointment')
             .leftJoinAndSelect('consent.pet', 'pet')
             .leftJoinAndSelect('consent.owner', 'owner')
-            .leftJoinAndSelect('owner.person', 'person')
+            .leftJoinAndSelect('owner.person', 'owner_person')
             .leftJoinAndSelect('consent.veterinarian', 'veterinarian')
+            .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
             .leftJoinAndSelect('consent.procedureType', 'procedureType')
             .where('consent.companyId = :companyId', { companyId });
 
@@ -170,7 +171,7 @@ export class SurgicalConsentsService {
 
         // Filtro por texto para procedimiento personalizado
         if (filters.custom_procedure_type) {
-            queryBuilder.andWhere('consent.custom_procedure_type LIKE :customType', { customType: `%${filters.custom_procedure_type}%` });
+            queryBuilder.andWhere('consent.custom_procedure_type ILIKE :customType', { customType: `%${filters.custom_procedure_type}%` });
         }
 
         // Filtros de rango para fechas
@@ -198,15 +199,15 @@ export class SurgicalConsentsService {
 
         // Filtros para entidades relacionadas
         if (filters.pet_name) {
-            queryBuilder.andWhere('pet.name LIKE :petName', { petName: `%${filters.pet_name}%` });
+            queryBuilder.andWhere('pet.name ILIKE :petName', { petName: `%${filters.pet_name}%` });
         }
 
         if (filters.owner_name) {
-            queryBuilder.andWhere('owner.full_name LIKE :ownerName', { ownerName: `%${filters.owner_name}%` });
+            queryBuilder.andWhere('owner_person.full_name ILIKE :ownerName', { ownerName: `%${filters.owner_name}%` });
         }
 
         if (filters.veterinarian_name) {
-            queryBuilder.andWhere('veterinarian.full_name LIKE :vetName', { vetName: `%${filters.veterinarian_name}%` });
+            queryBuilder.andWhere('veterinarian_person.full_name ILIKE :vetName', { vetName: `%${filters.veterinarian_name}%` });
         }
 
         // Filtro para documento firmado

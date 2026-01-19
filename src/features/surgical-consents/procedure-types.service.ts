@@ -36,7 +36,7 @@ export class ProcedureTypesService {
         
         // Aplicar filtros
         if (filters.name) {
-            queryBuilder.andWhere('procedureType.name LIKE :name', { name: `%${filters.name}%` });
+            queryBuilder.andWhere('procedureType.name ILIKE :name', { name: `%${filters.name}%` });
         }
         
         if (filters.is_active !== undefined) {

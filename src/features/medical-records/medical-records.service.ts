@@ -173,10 +173,11 @@ export class MedicalRecordsService {
       .createQueryBuilder('mr')
       .leftJoinAndSelect('mr.pet', 'pet')
       .leftJoinAndSelect('pet.owner', 'owner')
-      .leftJoinAndSelect('owner.person', 'person')
+      .leftJoinAndSelect('owner.person', 'owner_person')
       .leftJoinAndSelect('mr.user', 'user')
       .leftJoinAndSelect('mr.opinions', 'opinions')
       .leftJoinAndSelect('mr.veterinarian', 'veterinarian')
+      .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
       .leftJoinAndSelect('mr.treatments', 'treatments')
       .leftJoinAndSelect('mr.appointment', 'appointment')
       .where('mr.companyId = :companyId', { companyId });
@@ -200,25 +201,25 @@ export class MedicalRecordsService {
 
     // Búsqueda de texto en campos de texto largo
     if (filters.diagnosis_contains) {
-      queryBuilder.andWhere('mr.diagnosis LIKE :diagnosis', {
+      queryBuilder.andWhere('mr.diagnosis ILIKE :diagnosis', {
         diagnosis: `%${filters.diagnosis_contains}%`,
       });
     }
 
     if (filters.type) {
-      queryBuilder.andWhere('UPPER(mr.type) LIKE :type', {
+      queryBuilder.andWhere('UPPER(mr.type) ILIKE :type', {
         type: `%${filters.type.toUpperCase()}%`,
       });
     }
 
     if (filters.treatment_contains) {
-      queryBuilder.andWhere('mr.treatment LIKE :treatment', {
+      queryBuilder.andWhere('mr.treatment ILIKE :treatment', {
         treatment: `%${filters.treatment_contains}%`,
       });
     }
 
     if (filters.prescriptions_contains) {
-      queryBuilder.andWhere('mr.prescriptions LIKE :prescriptions', {
+      queryBuilder.andWhere('mr.prescriptions ILIKE :prescriptions', {
         prescriptions: `%${filters.prescriptions_contains}%`,
       });
     }
@@ -241,7 +242,7 @@ export class MedicalRecordsService {
 
     // Filtros para la mascota relacionada
     if (filters.pet_name) {
-      queryBuilder.andWhere('pet.name LIKE :pet_name', {
+      queryBuilder.andWhere('pet.name ILIKE :pet_name', {
         pet_name: `%${filters.pet_name}%`,
       });
     }
@@ -253,14 +254,14 @@ export class MedicalRecordsService {
     }
 
     if (filters.owner_name) {
-      queryBuilder.andWhere('owner.full_name LIKE :owner_name', {
+      queryBuilder.andWhere('owner_person.full_name ILIKE :owner_name', {
         owner_name: `%${filters.owner_name}%`,
       });
     }
 
     // Filtros para el veterinario
     if (filters.veterinarian_name) {
-      queryBuilder.andWhere('veterinarian.full_name LIKE :vet_name', {
+      queryBuilder.andWhere('veterinarian_person.full_name ILIKE :vet_name', {
         vet_name: `%${filters.veterinarian_name}%`,
       });
     }

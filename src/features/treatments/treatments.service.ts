@@ -53,8 +53,9 @@ const query = this.treatmentRepository
   .leftJoinAndSelect('treatment.medical_record', 'medical_record')
   .leftJoinAndSelect('medical_record.pet', 'pet')
   .leftJoinAndSelect('pet.owner', 'owner')
-  .leftJoinAndSelect('owner.person', 'person')
+  .leftJoinAndSelect('owner.person', 'owner_person')
   .leftJoinAndSelect('medical_record.veterinarian', 'veterinarian')
+  .leftJoinAndSelect('veterinarian.person', 'veterinarian_person')
   .leftJoinAndSelect('medical_record.opinions', 'opinions')
   .leftJoinAndSelect('opinions.user', 'user')
   .leftJoinAndSelect('user.person', 'person');
@@ -86,7 +87,7 @@ const query = this.treatmentRepository
     for (const [key, column] of Object.entries(likeFilters)) {
       const value = filter[key as keyof TreatmentFilterDto];
       if (value)
-        query.andWhere(`treatment.${column} LIKE :${column}`, {
+        query.andWhere(`treatment.${column} ILIKE :${column}`, {
           [column]: `%${value}%`,
         });
     }
