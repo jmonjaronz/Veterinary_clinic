@@ -37,7 +37,9 @@ export class VeterinariansService {
                 person = await this.personsService.create(personFields, manager);
             }
 
-            let veterinarian = await this.findOne(person.id, companyId)
+            let veterinarian = await this.veterinarianRepository.findOne({
+                where: { personId: person.id, companyId }
+            })
             if(veterinarian) {
                 throw new BadRequestException(`El veterinario ya existe para la persona con ID ${person.id} en la empresa`);
             }
