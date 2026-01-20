@@ -13,6 +13,7 @@ import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
 import { CreateVaccinationRecordDto } from './dto/create-vaccination-record.dto';
 import { UpdateVaccinationRecordDto } from './dto/update-vaccination-record.dto';
 import { VaccinationRecordFilterDto } from './dto/vaccination-record-filter.dto';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('vaccination-records')
 export class VaccinationRecordsController {
@@ -22,15 +23,25 @@ export class VaccinationRecordsController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  findAll(@Query() filterDto: VaccinationRecordFilterDto) {
-    return this.vaccinationPlansService.findVaccinationRecords(filterDto);
+  findAll(
+    @Query() filterDto: VaccinationRecordFilterDto,
+    @CompanyId() companyId: number,
+  ) {
+    return this.vaccinationPlansService.findVaccinationRecords(
+      companyId,
+      filterDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createVaccinationRecordDto: CreateVaccinationRecordDto) {
+  create(
+    @Body() createVaccinationRecordDto: CreateVaccinationRecordDto,
+    @CompanyId() companyId: number,
+  ) {
     return this.vaccinationPlansService.addVaccinationRecord(
       createVaccinationRecordDto,
+      companyId,
     );
   }
 
@@ -39,10 +50,12 @@ export class VaccinationRecordsController {
   update(
     @Param('id') id: string,
     @Body() updateVaccinationRecordDto: UpdateVaccinationRecordDto,
+    @CompanyId() companyId: number
   ) {
     return this.vaccinationPlansService.updateVaccinationRecord(
       +id,
       updateVaccinationRecordDto,
+      companyId,
     );
   }
 
@@ -56,11 +69,13 @@ export class VaccinationRecordsController {
   @Patch(':id/apply')
   applyVaccine(
     @Param('id') id: string,
+    @CompanyId() companyId: number,
     @Body('administered_date') administeredDate?: Date,
     @Body('notes') notes?: string,
   ) {
     return this.vaccinationPlansService.applyVaccine(
       +id,
+      companyId,
       administeredDate,
       notes,
     );
@@ -71,17 +86,19 @@ export class VaccinationRecordsController {
   complete(
     @Param('id') id: string,
     @Body('administered_date') administered_date: Date,
+    @CompanyId() companyId: number
   ) {
     return this.vaccinationPlansService.completeVaccinationRecord(
       +id,
+      companyId,
       administered_date,
     );
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string) {
-    return this.vaccinationPlansService.cancelVaccinationRecord(+id);
+  cancel(@Param('id') id: string, @CompanyId() companyId: number) {
+    return this.vaccinationPlansService.cancelVaccinationRecord(+id, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -89,11 +106,13 @@ export class VaccinationRecordsController {
   reschedule(
     @Param('id') id: string,
     @Body('scheduled_date') scheduled_date: Date,
+    @CompanyId() companyId: number,
   ) {
     console.log('Fecha Reprogramación');
     console.log(scheduled_date);
     return this.vaccinationPlansService.rescheduleVaccinationRecord(
       +id,
+      companyId,
       scheduled_date,
     );
   }

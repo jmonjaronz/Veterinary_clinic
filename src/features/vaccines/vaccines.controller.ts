@@ -4,6 +4,7 @@ import { CreateVaccineDto } from './dto/create-vaccine.dto';
 import { UpdateVaccineDto } from './dto/update-vaccine.dto';
 import { VaccineFilterDto } from './dto/vaccine-filter.dto';
 import { JwtAuthGuard } from 'src/common/auth/guards/jwt-auth.guard';
+import { CompanyId } from 'src/common/auth/decorators/company-id.decorator';
 
 @Controller('vaccines')
 export class VaccinesController {
@@ -11,37 +12,38 @@ export class VaccinesController {
 
     @UseGuards(JwtAuthGuard)
     @Post()
-    create(@Body() createVaccineDto: CreateVaccineDto) {
-        return this.vaccinesService.create(createVaccineDto);
+    create(@Body() createVaccineDto: CreateVaccineDto, @CompanyId() companyId: number) {
+        return this.vaccinesService.create(createVaccineDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(
         @Query() filterDto: VaccineFilterDto,
+        @CompanyId() companyId: number,
         @Query('plan_id') planId?: string
     ) {
         if (planId) {
-            return this.vaccinesService.findByPlan(+planId, filterDto);
+            return this.vaccinesService.findByPlan(+planId, companyId, filterDto);
         }
-        return this.vaccinesService.findAll(filterDto);
+        return this.vaccinesService.findAll(companyId, filterDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.vaccinesService.findOne(+id);
+    findOne(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.vaccinesService.findOne(+id, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateVaccineDto: UpdateVaccineDto) {
-        return this.vaccinesService.update(+id, updateVaccineDto);
+    update(@Param('id') id: string, @Body() updateVaccineDto: UpdateVaccineDto, @CompanyId() companyId: number) {
+        return this.vaccinesService.update(+id, updateVaccineDto, companyId);
     }
 
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.vaccinesService.remove(+id);
+    remove(@Param('id') id: string, @CompanyId() companyId: number) {
+        return this.vaccinesService.remove(+id, companyId);
     }
 }

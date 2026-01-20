@@ -16,12 +16,12 @@ export class VaccinesService {
         private readonly speciesVaccinationPlanRepository: Repository<SpeciesVaccinationPlan>,
     ) {}
 
-    async create(createVaccineDto: CreateVaccineDto): Promise<Vaccine> {
+    async create(createVaccineDto: CreateVaccineDto, companyId: number): Promise<Vaccine> {
         const { species_vaccination_plan_id, name, application_age, validity, is_mandatory } = createVaccineDto;
 
         // Verificar si el plan de vacunación por especie existe
         const plan = await this.speciesVaccinationPlanRepository.findOne({ 
-            where: { id: species_vaccination_plan_id },
+            where: { id: species_vaccination_plan_id, companyId },
             relations: ['vaccines'] 
         });
         
@@ -47,7 +47,7 @@ export class VaccinesService {
         return this.vaccineRepository.save(vaccine);
     }
 
-    async findAll(filterDto?: VaccineFilterDto) {
+    async findAll(companyId: number, filterDto?: VaccineFilterDto) {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new VaccineFilterDto();
         
@@ -55,7 +55,8 @@ export class VaccinesService {
         const queryBuilder = this.vaccineRepository
             .createQueryBuilder('vaccine')
             .leftJoinAndSelect('vaccine.species_vaccination_plan', 'plan')
-            .leftJoinAndSelect('plan.species', 'species');
+            .leftJoinAndSelect('plan.species', 'species')
+            .where('plan.companyId = :companyId', { companyId });
             
         // Aplicar filtros
         if (filters.species_vaccination_plan_id) {
@@ -132,9 +133,9 @@ export class VaccinesService {
         };
     }
 
-    async findOne(id: number): Promise<Vaccine> {
+    async findOne(id: number, companyId: number): Promise<Vaccine> {
         const vaccine = await this.vaccineRepository.findOne({
-            where: { id },
+            where: { id, species_vaccination_plan: { companyId } },
             relations: ['species_vaccination_plan', 'species_vaccination_plan.species'],
         });
 
@@ -145,9 +146,9 @@ export class VaccinesService {
         return vaccine;
     }
 
-    async findByPlan(planId: number, filterDto?: VaccineFilterDto): Promise<any> {
+    async findByPlan(planId: number, companyId: number, filterDto?: VaccineFilterDto): Promise<any> {
         // Verificar si el plan de vacunación existe
-        const plan = await this.speciesVaccinationPlanRepository.findOne({ where: { id: planId } });
+        const plan = await this.speciesVaccinationPlanRepository.findOne({ where: { id: planId, companyId } });
         if (!plan) {
             throw new NotFoundException(`Plan de vacunación con ID ${planId} no encontrado`);
         }
@@ -159,17 +160,17 @@ export class VaccinesService {
         filters.species_vaccination_plan_id = planId;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
 
-    async update(id: number, updateVaccineDto: UpdateVaccineDto): Promise<Vaccine> {
-        const vaccine = await this.findOne(id);
+    async update(id: number, updateVaccineDto: UpdateVaccineDto, companyId: number): Promise<Vaccine> {
+        const vaccine = await this.findOne(id, companyId);
         
         // Si se intenta cambiar el plan, verificar que exista
         if (updateVaccineDto.species_vaccination_plan_id && 
             updateVaccineDto.species_vaccination_plan_id !== vaccine.species_vaccination_plan_id) {
             const plan = await this.speciesVaccinationPlanRepository.findOne({ 
-                where: { id: updateVaccineDto.species_vaccination_plan_id },
+                where: { id: updateVaccineDto.species_vaccination_plan_id, companyId },
                 relations: ['vaccines']
             });
             
@@ -188,7 +189,7 @@ export class VaccinesService {
         // Si solo se cambia el nombre, verificar que no exista otra vacuna con ese nombre en el mismo plan
         else if (updateVaccineDto.name && updateVaccineDto.name !== vaccine.name) {
             const plan = await this.speciesVaccinationPlanRepository.findOne({ 
-                where: { id: vaccine.species_vaccination_plan_id },
+                where: { id: vaccine.species_vaccination_plan_id, companyId },
                 relations: ['vaccines']
             });
             
@@ -204,16 +205,15 @@ export class VaccinesService {
         }
 
         // Actualizar los campos
-        Object.assign(vaccine, updateVaccineDto);
-        
-        return this.vaccineRepository.save(vaccine);
+        await this.vaccineRepository.update(id, updateVaccineDto);
+        return this.findOne(id, companyId);
     }
 
-    async remove(id: number): Promise<void> {
-        const result = await this.vaccineRepository.softDelete(id);
-        
-        if (result.affected === 0) {
+    async remove(id: number, companyId: number): Promise<void> {
+        const vaccine = await this.findOne(id, companyId);
+        if (!vaccine) {
             throw new NotFoundException(`Vacuna con ID ${id} no encontrada`);
         }
+        await this.vaccineRepository.softDelete(id);
     }
 }

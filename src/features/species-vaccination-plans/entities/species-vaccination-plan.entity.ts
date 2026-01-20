@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Species } from '../../species/entities/species.entity';
 import { Vaccine } from '../../vaccines/entities/vaccine.entity';
+import { Company } from 'src/features/companies/entities/company.entity';
 
 @Entity({ name: 'species_vaccination_plans' })
 export class SpeciesVaccinationPlan {
@@ -29,6 +30,13 @@ export class SpeciesVaccinationPlan {
 
   @Column({ type: 'text', nullable: true })
   description: string;
+
+  @Column({ name: 'company_id', nullable: true })
+  companyId: number;
+
+  @ManyToOne(() => Company)
+  @JoinColumn({ name: 'company_id' })
+  company: Company;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date | null;

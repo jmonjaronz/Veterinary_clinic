@@ -28,12 +28,12 @@ export class VaccinationPlansService {
         private readonly vaccineRepository: Repository<Vaccine>,
     ) {}
 
-    async create(createVaccinationPlanDto: CreateVaccinationPlanDto): Promise<VaccinationPlan> {
+    async create(createVaccinationPlanDto: CreateVaccinationPlanDto, companyId: number): Promise<VaccinationPlan> {
         const { pet_id, species_vaccination_plan_id, status } = createVaccinationPlanDto;
 
         // Verificar si la mascota existe
         const pet = await this.petRepository.findOne({ 
-            where: { id: pet_id },
+            where: { id: pet_id, owner: { companyId } },
             relations: ['species'] 
         });
         if (!pet) {
@@ -42,7 +42,7 @@ export class VaccinationPlansService {
 
         // Verificar si el plan de vacunación por especie existe
         const speciesVaccinationPlan = await this.speciesVaccinationPlanRepository.findOne({ 
-            where: { id: species_vaccination_plan_id },
+            where: { id: species_vaccination_plan_id, companyId },
             relations: ['species', 'vaccines']
         });
         if (!speciesVaccinationPlan) {
@@ -59,7 +59,8 @@ export class VaccinationPlansService {
             where: { 
                 pet_id, 
                 species_vaccination_plan_id,
-                status: 'activo' 
+                status: 'activo',
+                species_vaccination_plan: { companyId } 
             }
         });
 
@@ -120,10 +121,10 @@ export class VaccinationPlansService {
         }
 
         // Retornar el plan con sus registros
-        return this.findOne(savedPlan.id);
+        return this.findOne(savedPlan.id, companyId);
     }
 
-    async findAll(filterDto?: VaccinationPlanFilterDto) {
+    async findAll(companyId: number, filterDto?: VaccinationPlanFilterDto) {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new VaccinationPlanFilterDto();
         
@@ -137,7 +138,8 @@ export class VaccinationPlansService {
             .leftJoinAndSelect('svp.species', 'species')
             .leftJoinAndSelect('vp.vaccination_records', 'records')
             .leftJoinAndSelect('records.vaccine', 'vaccine')
-            .leftJoinAndSelect('records.plan_vaccine', 'plan_vaccine');
+            .leftJoinAndSelect('records.plan_vaccine', 'plan_vaccine')
+            .where('svp.companyId = :companyId', { companyId });
             
         // Aplicar filtros de plan de vacunación
         if (filters.pet_id) {
@@ -223,15 +225,14 @@ export class VaccinationPlansService {
         };
     }
 
-    async findOne(id: number): Promise<VaccinationPlan> {
+    async findOne(id: number, companyId: number): Promise<VaccinationPlan> {
         const vaccinationPlan = await this.vaccinationPlanRepository.findOne({
-            where: { id },
+            where: { id, species_vaccination_plan: { companyId } },
             relations: [
                 'pet', 
                 'pet.owner', 
                 'pet.owner.person',
                 'species_vaccination_plan', 
-                'species_vaccination_plan.species',
                 'vaccination_records',
                 'vaccination_records.vaccine',
                 'vaccination_records.plan_vaccine'
@@ -245,9 +246,9 @@ export class VaccinationPlansService {
         return vaccinationPlan;
     }
 
-    async findByPet(petId: number, filterDto?: VaccinationPlanFilterDto): Promise<any> {
+    async findByPet(petId: number, companyId: number, filterDto?: VaccinationPlanFilterDto): Promise<any> {
         // Verificar si la mascota existe
-        const pet = await this.petRepository.findOne({ where: { id: petId } });
+        const pet = await this.petRepository.findOne({ where: { id: petId, owner: { companyId } }, relations: ['owner']});
         if (!pet) {
             throw new NotFoundException(`Mascota con ID ${petId} no encontrada`);
         }
@@ -259,18 +260,18 @@ export class VaccinationPlansService {
         filters.pet_id = petId;
         
         // Usar el método findAll con los filtros
-        return this.findAll(filters);
+        return this.findAll(companyId, filters);
     }
 
-    async update(id: number, updateVaccinationPlanDto: UpdateVaccinationPlanDto): Promise<VaccinationPlan> {
-        const vaccinationPlan = await this.findOne(id);
+    async update(id: number, updateVaccinationPlanDto: UpdateVaccinationPlanDto, companyId: number): Promise<VaccinationPlan> {
+        const vaccinationPlan = await this.findOne(id, companyId);
         
         // Si se intenta cambiar la mascota, verificar que exista
         if (updateVaccinationPlanDto.pet_id && 
             updateVaccinationPlanDto.pet_id !== vaccinationPlan.pet_id) {
             const pet = await this.petRepository.findOne({ 
-                where: { id: updateVaccinationPlanDto.pet_id },
-                relations: ['species']
+                where: { id: updateVaccinationPlanDto.pet_id, owner: { companyId } },
+                relations: ['species', 'owner']
             });
             
             if (!pet) {
@@ -280,7 +281,7 @@ export class VaccinationPlansService {
             // Si también se cambia el plan de vacunación por especie, verificar que corresponda a la nueva mascota
             if (updateVaccinationPlanDto.species_vaccination_plan_id) {
                 const speciesVaccinationPlan = await this.speciesVaccinationPlanRepository.findOne({ 
-                    where: { id: updateVaccinationPlanDto.species_vaccination_plan_id } 
+                    where: { id: updateVaccinationPlanDto.species_vaccination_plan_id, companyId }
                 });
                 
                 if (!speciesVaccinationPlan) {
@@ -296,12 +297,12 @@ export class VaccinationPlansService {
         else if (updateVaccinationPlanDto.species_vaccination_plan_id && 
                 updateVaccinationPlanDto.species_vaccination_plan_id !== vaccinationPlan.species_vaccination_plan_id) {
             const pet = await this.petRepository.findOne({ 
-                where: { id: vaccinationPlan.pet_id },
-                relations: ['species']
+                where: { id: vaccinationPlan.pet_id, owner: { companyId } },
+                relations: ['species', 'owner']
             });
             
             const speciesVaccinationPlan = await this.speciesVaccinationPlanRepository.findOne({ 
-                where: { id: updateVaccinationPlanDto.species_vaccination_plan_id } 
+                where: { id: updateVaccinationPlanDto.species_vaccination_plan_id, companyId } 
             });
             
             if (!speciesVaccinationPlan) {
@@ -313,14 +314,12 @@ export class VaccinationPlansService {
             }
         }
 
-        // Actualizar los campos
-        Object.assign(vaccinationPlan, updateVaccinationPlanDto);
-        
-        return this.vaccinationPlanRepository.save(vaccinationPlan);
+        await this.vaccinationPlanRepository.update(id,updateVaccinationPlanDto);
+        return this.findOne(id, companyId);
     }
 
-    async deactivate(id: number): Promise<VaccinationPlan> {
-        const vaccinationPlan = await this.findOne(id);
+    async deactivate(id: number, companyId: number): Promise<VaccinationPlan> {
+        const vaccinationPlan = await this.findOne(id, companyId);
         
         if (vaccinationPlan.status === 'inactivo') {
             throw new BadRequestException('Este plan de vacunación ya está inactivo');
@@ -331,8 +330,8 @@ export class VaccinationPlansService {
         return this.vaccinationPlanRepository.save(vaccinationPlan);
     }
 
-    async activate(id: number): Promise<VaccinationPlan> {
-        const vaccinationPlan = await this.findOne(id);
+    async activate(id: number, companyId: number): Promise<VaccinationPlan> {
+        const vaccinationPlan = await this.findOne(id, companyId);
         
         if (vaccinationPlan.status === 'activo') {
             throw new BadRequestException('Este plan de vacunación ya está activo');
@@ -343,12 +342,13 @@ export class VaccinationPlansService {
         return this.vaccinationPlanRepository.save(vaccinationPlan);
     }
 
-    async remove(id: number): Promise<void> {
-        const result = await this.vaccinationPlanRepository.softDelete(id);
-        
-        if (result.affected === 0) {
+    async remove(id: number, companyId: number): Promise<void> {
+        const vaccinationPlan = await this.findOne(id, companyId);
+        if (!vaccinationPlan) {
             throw new NotFoundException(`Plan de vacunación con ID ${id} no encontrado`);
         }
+
+        await this.vaccinationPlanRepository.softDelete(id);
     }
 
     // Métodos para gestionar los registros de vacunación
@@ -376,9 +376,9 @@ export class VaccinationPlansService {
         return this.vaccinationRecordRepository.save(record);
     }
 
-    async updateVaccinationRecord(recordId: number, updateDto: UpdateVaccinationRecordDto): Promise<VaccinationRecord> {
+    async updateVaccinationRecord(recordId: number, updateDto: UpdateVaccinationRecordDto, companyId: number): Promise<VaccinationRecord | null> {
         const record = await this.vaccinationRecordRepository.findOne({
-            where: { id: recordId },
+            where: { id: recordId, vaccination_plan: { species_vaccination_plan: { companyId } } },
             relations: ['vaccination_plan', 'vaccine']
         });
         
@@ -402,20 +402,26 @@ export class VaccinationPlansService {
             }
         }
 
-        Object.assign(record, updateDto);
-        
+        if(updateDto.notes) {
+            updateDto.notes = (record.notes ? record.notes + '\n' : '') + updateDto.notes;
+        }
+
         // Si se está marcando como completado, asegurar que tenga fecha de administración
         if (updateDto.status === 'completado' && !record.administered_date) {
-            record.administered_date = new Date();
+            updateDto.administered_date = new Date();
         }
+        await this.vaccinationRecordRepository.update(recordId, updateDto);
         
-        return this.vaccinationRecordRepository.save(record);
+        return this.vaccinationRecordRepository.findOne({
+            where: { id: recordId, vaccination_plan: { species_vaccination_plan: { companyId } } },
+            relations: ['vaccination_plan', 'vaccine', 'vaccination_plan.species_vaccination_plan']
+        });
     }
 
-    async applyVaccine(recordId: number, administeredDate?: Date, notes?: string): Promise<VaccinationRecord> {
+    async applyVaccine(recordId: number, companyId: number, administeredDate?: Date, notes?: string): Promise<VaccinationRecord> {
         const record = await this.vaccinationRecordRepository.findOne({
-            where: { id: recordId },
-            relations: ['vaccination_plan', 'vaccine']
+            where: { id: recordId, vaccination_plan: { species_vaccination_plan: { companyId } } },
+            relations: ['vaccination_plan', 'vaccine', 'vaccination_plan.species_vaccination_plan']
         });
         
         if (!record) {
@@ -440,7 +446,7 @@ export class VaccinationPlansService {
     }
 
     // Métodos para gestionar los registros de vacunación manteniendo compatibilidad
-    async findVaccinationRecords(filterDto?: VaccinationRecordFilterDto) {
+    async findVaccinationRecords(companyId: number,filterDto?: VaccinationRecordFilterDto) {
         // Usar un objeto por defecto si filterDto es undefined
         const filters = filterDto || new VaccinationRecordFilterDto();
         
@@ -449,7 +455,10 @@ export class VaccinationPlansService {
             .createQueryBuilder('record')
             .leftJoinAndSelect('record.vaccination_plan', 'plan')
             .leftJoinAndSelect('record.vaccine', 'vaccine')
-            .leftJoinAndSelect('plan.pet', 'pet');
+            .leftJoinAndSelect('plan.pet', 'pet')
+            .leftJoinAndSelect('plan.species_vaccination_plan', 'speciesPlan')
+            .where('speciesPlan.companyId = :companyId', { companyId });
+
             
         // Aplicar filtros
         if (filters.vaccination_plan_id) {
@@ -545,12 +554,12 @@ export class VaccinationPlansService {
         };
     }
 
-    async addVaccinationRecord(createVaccinationRecordDto: CreateVaccinationRecordDto): Promise<VaccinationRecord> {
+    async addVaccinationRecord(createVaccinationRecordDto: CreateVaccinationRecordDto, companyId: number): Promise<VaccinationRecord> {
         const { vaccination_plan_id, vaccine_id, scheduled_date, status } = createVaccinationRecordDto;
 
         // Verificar si el plan de vacunación existe
         const plan = await this.vaccinationPlanRepository.findOne({ 
-            where: { id: vaccination_plan_id },
+            where: { id: vaccination_plan_id, species_vaccination_plan: { companyId } },
             relations: ['pet', 'species_vaccination_plan']
         });
         
@@ -560,7 +569,7 @@ export class VaccinationPlansService {
 
         // Verificar si la vacuna existe
         const vaccine = await this.vaccineRepository.findOne({ 
-            where: { id: vaccine_id },
+            where: { id: vaccine_id, species_vaccination_plan: { companyId } },
             relations: ['species_vaccination_plan']
         });
         
@@ -578,7 +587,7 @@ export class VaccinationPlansService {
             where: { 
                 vaccination_plan_id, 
                 vaccine_id,
-                status: 'pendiente'
+                status: 'pendiente',
             }
         });
 
@@ -600,14 +609,14 @@ export class VaccinationPlansService {
         return this.vaccinationRecordRepository.save(record);
     }
 
-    async completeVaccinationRecord(recordId: number, administered_date: Date): Promise<VaccinationRecord> {
-        return this.applyVaccine(recordId, administered_date);
+    async completeVaccinationRecord(recordId: number, companyId: number, administered_date: Date): Promise<VaccinationRecord> {
+        return this.applyVaccine(recordId, companyId, administered_date);
     }
 
-    async cancelVaccinationRecord(recordId: number): Promise<VaccinationRecord> {
+    async cancelVaccinationRecord(recordId: number, companyId: number): Promise<VaccinationRecord> {
         const record = await this.vaccinationRecordRepository.findOne({
-            where: { id: recordId },
-            relations: ['vaccination_plan', 'vaccine']
+            where: { id: recordId, vaccination_plan: { species_vaccination_plan: { companyId } } },
+            relations: ['vaccination_plan', 'vaccine', 'vaccination_plan.species_vaccination_plan']
         });
         
         if (!record) {
@@ -628,10 +637,10 @@ export class VaccinationPlansService {
         return this.vaccinationRecordRepository.save(record);
     }
 
-    async rescheduleVaccinationRecord(recordId: number, scheduled_date: Date): Promise<VaccinationRecord> {
+    async rescheduleVaccinationRecord(recordId: number, companyId: number, scheduled_date: Date): Promise<VaccinationRecord> {
         const record = await this.vaccinationRecordRepository.findOne({
-            where: { id: recordId },
-            relations: ['vaccination_plan', 'vaccine']
+            where: { id: recordId, vaccination_plan: { species_vaccination_plan: { companyId } } },
+            relations: ['vaccination_plan', 'vaccine', 'vaccination_plan.species_vaccination_plan']
         });
         
         if (!record) {
