@@ -408,9 +408,9 @@ export class HospitalizationsService {
     }
 
     // Actualizar los campos
-    Object.assign(hospitalization, updateHospitalizationDto);
+    await this.hospitalizationRepository.update(id, updateHospitalizationDto);
 
-    return this.hospitalizationRepository.save(hospitalization);
+    return this.findOne(id, companyId);
   }
 
   async discharge(

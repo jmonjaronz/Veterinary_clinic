@@ -503,9 +503,8 @@ export class AppointmentsService {
     }
 
     // Actualizar los campos
-    Object.assign(appointment, updateAppointmentDto);
-
-    return this.appointmentRepository.save(appointment);
+    await this.appointmentRepository.update(id, updateAppointmentDto)
+    return this.findOne(id, companyId);
   }
 
   async complete(id: number, companyId:number, document?: string): Promise<Appointment> {

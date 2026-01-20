@@ -458,9 +458,7 @@ export class SurgicalConsentsService {
         }
 
         // Actualizar campos
-        Object.assign(consent, updateSurgicalConsentDto);
-        
-        await this.surgicalConsentRepository.save(consent);
+        await this.surgicalConsentRepository.update(id, updateSurgicalConsentDto);
         
         // Volver a buscar el consentimiento con sus relaciones para transformarlo
         return this.findOne(id, companyId);

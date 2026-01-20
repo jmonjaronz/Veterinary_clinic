@@ -189,11 +189,11 @@ async create(createPersonDto: CreatePersonDto, manager?: EntityManager): Promise
 
   async update(id: number, updatePersonDto: UpdatePersonDto, manager?: EntityManager): Promise<Person> {
     const repo = manager ? manager.getRepository(Person) : this.personRepository;
-    const person = await this.findOne(id, manager);
+    await this.findOne(id, manager);
 
-    Object.assign(person, updatePersonDto);
+    await repo.update(id, updatePersonDto);
 
-    return repo.save(person);
+    return this.findOne(id, manager);
   }
 
   async remove(id: number, companyId: number): Promise<void> {

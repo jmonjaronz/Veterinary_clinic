@@ -109,9 +109,9 @@ export class SpeciesService {
         }
 
         // Actualizar los campos
-        Object.assign(species, updateSpeciesDto);
+        await this.speciesRepository.update(id, updateSpeciesDto);
         
-        return this.speciesRepository.save(species);
+        return this.findOne(id);
     }
 
     async remove(id: number): Promise<void> {

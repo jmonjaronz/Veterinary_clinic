@@ -270,9 +270,7 @@ export class PetsService {
         }
 
         // Actualizar campos
-        Object.assign(pet, updatePetDto);
-        
-        await this.petRepository.save(pet);
+        await this.petRepository.update(id, updatePetDto);
         
         // Volver a buscar el pet con sus relaciones para transformarlo
         return this.findOne(id, companyId);

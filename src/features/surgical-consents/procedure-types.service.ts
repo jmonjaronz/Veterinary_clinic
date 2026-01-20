@@ -111,9 +111,9 @@ export class ProcedureTypesService {
         }
 
         // Actualizar campos
-        Object.assign(procedureType, updateProcedureTypeDto);
+        await this.procedureTypeRepository.update(id, updateProcedureTypeDto);
         
-        return this.procedureTypeRepository.save(procedureType);
+        return this.findOne(id);
     }
 
     async remove(id: number): Promise<void> {

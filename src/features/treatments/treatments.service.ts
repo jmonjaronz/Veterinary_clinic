@@ -181,16 +181,10 @@ const query = this.treatmentRepository
       }
     }
 
-    // Asignar cambios básicos
-    Object.assign(treatment, dto);
+    // Actualizar el tratamiento
+    await this.treatmentRepository.update(id, dto);
 
-    // Si vienen medicamentos como array, procesarlos
-    if (dto.medications) {
-      // Asignar directamente el array de medicamentos
-      treatment.medications = dto.medications;
-    }
-
-    return this.treatmentRepository.save(treatment);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {

@@ -133,11 +133,11 @@ export class OpinionService {
   }
 
   async update(id: number, dto: UpdateOpinionDto, companyId: number): Promise<OpinionResponseDto> {
-    const opinion = await this.findOneQuery(id, companyId);
+    await this.findOneQuery(id, companyId);
 
-    Object.assign(opinion, dto);
+    await this.opinionRepository.update(id, dto);
 
-    const saved = await this.opinionRepository.save(opinion);
+    const saved = await this.findOneQuery(id, companyId);
     return plainToInstance(OpinionResponseDto, saved, { excludeExtraneousValues: true });
   }
 
