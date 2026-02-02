@@ -539,7 +539,7 @@ export class MedicalRecordsService {
     // ==== Verificar mascota ====
     const pet = await this.petRepository.findOne({
       where: { id: petId, owner: { companyId } },
-      relations: ['owner', 'species'],
+      relations: ['owner', 'species', 'owner.person'],
     });
 
     if (!pet) {
