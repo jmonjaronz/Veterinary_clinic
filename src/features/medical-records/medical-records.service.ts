@@ -508,12 +508,12 @@ export class MedicalRecordsService {
     }
   }
 
-  private normalizeDate(date: Date, endOfDay = false): Date {
-    const d = new Date(date);
+  private normalizeDate(dateString: string, endOfDay = false): Date {
+    const [year, month, day] = dateString.split('-').map(Number);
     if (endOfDay) {
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+      return new Date(year, month - 1, day, 23, 59, 59);
     }
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+    return new Date(year, month - 1, day, 0, 0, 0);
   }
 
   async getPetCompleteHistory(
@@ -524,17 +524,16 @@ export class MedicalRecordsService {
   ): Promise<PetCompleteHistoryDto> {
     // ==== Fechas por defecto ====
     const now = new Date();
-    const defaultStart = this.normalizeDate(new Date(2024, 0, 1));
+    const defaultStart = this.normalizeDate('2024-01-01');
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultEnd = this.normalizeDate(tomorrow, true);
+    const defaultEnd = this.normalizeDate(
+      tomorrow.toISOString().split('T')[0],
+      true,
+    );
 
-    const inicio = fechaInicio
-      ? this.normalizeDate(new Date(fechaInicio))
-      : defaultStart;
-    const fin = fechaFin
-      ? this.normalizeDate(new Date(fechaFin), true)
-      : defaultEnd;
+    const inicio = fechaInicio ? this.normalizeDate(fechaInicio) : defaultStart;
+    const fin = fechaFin ? this.normalizeDate(fechaFin, true) : defaultEnd;
 
     // ==== Verificar mascota ====
     const pet = await this.petRepository.findOne({
@@ -554,10 +553,11 @@ export class MedicalRecordsService {
           inicio.toISOString().split('T')[0],
           fin.toISOString().split('T')[0],
         ),
-        companyId
+        companyId,
       },
       relations: [
         'veterinarian',
+        'veterinarian.person',
         'appointment',
         'treatments',
         'opinions',
@@ -565,8 +565,9 @@ export class MedicalRecordsService {
         'opinions.user.person',
         'pet',
         'pet.owner',
-        'owner.person',
+        'pet.owner.person',
         'user',
+        'user.person',
       ],
       order: { appointment_date: 'DESC' },
     });
